@@ -1,24 +1,35 @@
 #include <stdio.h>
-#define U64 unsigned long
+#define U64 unsigned long 
 #define WHITE 0
 #define BLACK 1
+#define ROOK 0
+#define BISHOP 1
+#define RANK square/8
+#define FILE square%8
+    
 
+struct MagicTable{
+  U64 magic;
+  int index;
+  U64 blackmask;
+} typedef MagicTable;
 
 /*External variables*/
 extern U64 pawn_attack_table[2][64];
 extern U64 knight_attack_table[64];
-extern U64 rook_attack_table[64];
-extern U64 bishop_attack_table[64];
-extern U64 knight_attack_table[64];
 extern U64 king_attack_table[64];
+extern const int bishop_rel_bits[64];
+extern const int rook_rel_bits[64];
+extern U64 bishop_magic[64];
+extern U64 rook_magic[64];
 
 /*Bitwise macros*/
-#define GET_BIT(bitboard, square) (bitboard & (1ULL << square)) 
+#define GET_BIT(bitboard, square) (bitboard & (1UL << square)) 
 #define SQUARE(rank,file) rank*8+file
-#define SET_BIT(board, square) board |= (1ULL << square)
-#define SET_BIT_NUM(board, square) (board | (1ULL << square))
-
-#define REMOVE_BIT(board, square) board &= ~(1ULL << square)
+#define SET_BIT(board, square) board |= (1UL << square)
+#define SET_BIT_NUM(board, square) (board | (1UL << square))
+#define COUNT_BITS(bitboard) __builtin_popcountl(bitboard)
+#define REMOVE_BIT(board, square) board &= ~(1UL << square)
 
 /*Enum for chess squares*/
 enum ChessSquare {
@@ -127,6 +138,18 @@ Bitboard: 4557430888798830399d*/
 
 U64 pawn_attacks(int square, int color); 
 U64 knight_attacks(int square);
-U64 rook_attacks(int square);
+U64 king_attacks(int square);
+U64 mask_rook_attacks(int square);
+U64 mask_bishop_attacks(int square);
+U64 generate_rook_attacks(int square, U64 blockBB);
+U64 generate_bishop_attacks(int square, U64 blockBB);
 void print_bitboard(U64 bitboard);
 void init_pieces_attacks();
+U64 generate_magic_number();
+U64 set_occupancy(int index, int bits, U64 attack_mask);
+U64 rook_attack(int square, U64 blockBB);
+U64 bishop_attack(int square, U64 blockBB);
+void init_slider_attacks();
+U64 find_magic_number(int square, int relevant_bits, int piece);
+
+extern U64 lookup_table[87988];

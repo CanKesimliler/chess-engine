@@ -19,10 +19,9 @@ long blackKingBB = 0x0000000000000010;
 
 int main(void){
 
-    U64 board = 0UL;    
     init_pieces_attacks();
-    print_bitboard(rook_attack_table[E5]);
+    init_slider_attacks();
 
-
+    U64 block = 0UL; 
     return 0;
 }

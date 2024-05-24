@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -Wall -ansi
+CFLAGS = -Wall 
 
 TARGET = engine
 

@@ -1,27 +1,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "board.h"
+#include "parser.h"
 
-long whiteRooksBB = 0x8100000000000000;
-long whiteKnightsBB = 0x4200000000000000; 
-long whiteBishopsBB = 0x2400000000000000; 
-long whiteQueenBB = 0x0800000000000000;
-long whiteKingBB = 0x1000000000000000;
-long whitePawnsBB = 0x00FF000000000000;
+/*Declaring bitboards for all pieces*/
+U64 bitboards[15];
 
-long blackPawnsBB = 0x000000000000FF00;
-long blackRooksBB = 0x0000000000000081;
-long blackKnightsBB = 0x0000000000000042; 
-long blackBishopsBB = 0x0000000000000024; 
-long blackQueenBB = 0x0000000000000008;
-long blackKingBB = 0x0000000000000010;
+/*Declaring necessery flags*/
+int side = -1; /*Side to move*/
+int enpassant = NO_SQ; /*Enpassant square*/
+int castle = 0b1111; /*Castle rights encoded bitwise*/ 
+/*1000 for white castle king*/
+/*0100 for white castle queen*/
+/*0010 for black castle king*/
+/*0001 for black castle queen*/
+int half_moves = 0; /*Half moves counter*/
+int full_moves = 0; /*Full moves counter*/
 
 
 int main(void){
-
-    init_pieces_attacks();
-    init_slider_attacks();
-
-    U64 block = 0UL; 
+    
+    // 65535d
+    // 18446462598732840960d
     return 0;
 }

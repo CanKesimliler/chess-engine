@@ -4,7 +4,7 @@ CFLAGS = -Wall
 
 TARGET = engine
 
-SRCS = engine.c board.c
+SRCS = engine.c board.c parser.c
 
 OBJS = $(SRCS:.c=.o)
 

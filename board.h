@@ -1,9 +1,10 @@
+#ifndef BOARD_H_
+#define BOARD_H_
+
 #include <stdio.h>
 #define U64 unsigned long 
-#define WHITE 0
-#define BLACK 1
-#define ROOK 0
-#define BISHOP 1
+#define WHITE_P 0
+#define BLACK_P 1
 #define RANK square/8
 #define FILE square%8
     
@@ -24,12 +25,12 @@ extern U64 bishop_magic[64];
 extern U64 rook_magic[64];
 
 /*Bitwise macros*/
-#define GET_BIT(bitboard, square) (bitboard & (1UL << square)) 
+#define GET_BIT(bitboard, square) ((bitboard) & (1UL << (square))) 
 #define SQUARE(rank,file) rank*8+file
-#define SET_BIT(board, square) board |= (1UL << square)
-#define SET_BIT_NUM(board, square) (board | (1UL << square))
-#define COUNT_BITS(bitboard) __builtin_popcountl(bitboard)
-#define REMOVE_BIT(board, square) board &= ~(1UL << square)
+#define SET_BIT(board, square) (board) |= (1UL << (square))
+#define SET_BIT_NUM(board, square) ((board) | (1UL << (square)))
+#define COUNT_BITS(bitboard) __builtin_popcountl((bitboard))
+#define REMOVE_BIT(board, square) (board) &= ~(1UL << (square))
 
 /*Enum for chess squares*/
 enum ChessSquare {
@@ -40,8 +41,22 @@ enum ChessSquare {
     A5 = SQUARE(3, 0), B5, C5, D5, E5, F5, G5, H5,
     A6 = SQUARE(2, 0), B6, C6, D6, E6, F6, G6, H6,
     A7 = SQUARE(1, 0), B7, C7, D7, E7, F7, G7, H7,
-    A8 = SQUARE(0, 0), B8, C8, D8, E8, F8, G8, H8
+    A8 = SQUARE(0, 0), B8, C8, D8, E8, F8, G8, H8,
 };
+#define NO_SQ -1
+
+/*Enum for chess pieces*/
+enum ChessPiece {
+    wP, wN, wB, wR, wQ, wK,
+    bP, bN, bB, bR, bQ, bK,
+    bA, wA, AP 
+};
+
+/*Enum for castling rights*/
+enum CastleRights {
+    WKC = 8, WQC = 4, BKC = 2, BQC = 1
+};
+
 
 /*Not A file*/
 #define NOT_A_FILE 0xFEFEFEFEFEFEFEFE
@@ -151,5 +166,11 @@ U64 rook_attack(int square, U64 blockBB);
 U64 bishop_attack(int square, U64 blockBB);
 void init_slider_attacks();
 U64 find_magic_number(int square, int relevant_bits, int piece);
+void restart(U64 *bitboards, int *side, int *enpassant, int *castle, int *half, int* full);
 
 extern U64 lookup_table[87988];
+
+
+
+
+#endif

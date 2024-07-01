@@ -208,7 +208,7 @@ void print_bitboard(U64 bitboard)
 U64 pawn_attacks(int square, int color)
 {
     U64 attacks = 0UL;
-    if (color == WHITE)
+    if (color == WHITE_P)
     {
         if ((SET_BIT_NUM(0UL, square) >> 7) & NOT_A_FILE)
             attacks |= (SET_BIT_NUM(0UL, square) >> 7);
@@ -359,8 +359,8 @@ void init_pieces_attacks()
     {
 
         /*Initializing attack tables for pawns*/
-        pawn_attack_table[WHITE][i] = pawn_attacks(i, WHITE);
-        pawn_attack_table[BLACK][i] = pawn_attacks(i, BLACK);
+        pawn_attack_table[WHITE_P][i] = pawn_attacks(i, WHITE_P);
+        pawn_attack_table[BLACK_P][i] = pawn_attacks(i, BLACK_P);
 
         /*Initializing attack tables for kings*/
         king_attack_table[i] = king_attacks(i);
@@ -613,35 +613,112 @@ U64 find_magic_number(int square, int relevant_bits, int piece) {
     return 0UL;
 }
 
-/*Initialize precalculated slider attack tables*/
-void init_slider_attacks(){
+/**
+ * Initializes precalculated slider attack tables for rooks and bishops.
+ * This function precomputes all possible attack patterns for rooks and bishops
+ * based on the occupancy of other pieces on the board. It uses magic bitboards
+ * to efficiently generate and store these patterns in a lookup table.
+ */
+void init_slider_attacks() {
+    int sq, index;
 
-    int sq;
-    int index;
-    for(sq = 0; sq < 64; sq++){
-        int occupancy_bitsR = 1 << rook_rel_bits[sq];
-        int occupancy_bitsB = 1 << bishop_rel_bits[sq];
-        for(index = 0; index < occupancy_bitsR; index++){
+    // Iterate over all squares on the chessboard
+    for (sq = 0; sq < 64; sq++) {
+        // Calculate the number of occupancy variations for rooks and bishops on the square
+        int occupancy_bitsR = 1 << rook_rel_bits[sq]; // Number of variations for rooks
+        int occupancy_bitsB = 1 << bishop_rel_bits[sq]; // Number of variations for bishops
+
+        // Generate and store attack patterns for rooks
+        for (index = 0; index < occupancy_bitsR; index++) {
+            // Set occupancy based on index, count of bits, and mask
             U64 occ = set_occupancy(index, COUNT_BITS(~RookMagicTable[sq].blackmask), ~RookMagicTable[sq].blackmask);
-            int magic_index = (((occ | RookMagicTable[sq].blackmask))* RookMagicTable[sq].magic) >> (64-12);
+            // Calculate the magic index for the rook's position and occupancy
+            int magic_index = (((occ | RookMagicTable[sq].blackmask)) * RookMagicTable[sq].magic) >> (64 - 12);
+            // Store the generated attack pattern in the lookup table
             lookup_table[RookMagicTable[sq].index + magic_index] = generate_rook_attacks(sq, occ);
         }
-        for(index = 0; index < occupancy_bitsB; index++){
+
+        // Generate and store attack patterns for bishops
+        for (index = 0; index < occupancy_bitsB; index++) {
+            // Set occupancy based on index, count of bits, and mask
             U64 occ = set_occupancy(index, COUNT_BITS(~BishopMagicTable[sq].blackmask), ~BishopMagicTable[sq].blackmask);
-            int magic_index = (((occ | BishopMagicTable[sq].blackmask))* BishopMagicTable[sq].magic) >> (64-9);
+            // Calculate the magic index for the bishop's position and occupancy
+            int magic_index = (((occ | BishopMagicTable[sq].blackmask)) * BishopMagicTable[sq].magic) >> (64 - 9);
+            // Store the generated attack pattern in the lookup table
             lookup_table[BishopMagicTable[sq].index + magic_index] = generate_bishop_attacks(sq, occ);
         }
-    }    
+    }
 }
 
+/**
+ * Calculates the attack bitboard for a rook on a given square.
+ * 
+ * @param square The square where the rook is located.
+ * @param blockBB The bitboard representing the blocking pieces on the board.
+ * @return The attack bitboard for the rook on the given square.
+ */
 U64 rook_attack(int square, U64 blockBB){
     int magic_index = (int)(((blockBB | RookMagicTable[square].blackmask) * RookMagicTable[square].magic) >> (64 - 12));
     return lookup_table[RookMagicTable[square].index + magic_index];
 }
-U64 bishop_attack(int square, U64 blockBB){
+
+/**
+ * Calculates the bishop attack bitboard for a given square and blocking bitboard.
+ *
+ * @param square The square index of the bishop.
+ * @param blockBB The blocking bitboard representing occupied squares.
+ * @return The bishop attack bitboard.
+ */
+U64 bishop_attack(int square, U64 blockBB) {
     int magic_index = (int)(((blockBB | BishopMagicTable[square].blackmask) * BishopMagicTable[square].magic) >> (64 - 9));
     return lookup_table[BishopMagicTable[square].index + magic_index];
 }
 
+/**
+ * Resets or initializes the chess game state.
+ * 
+ * This function is responsible for setting up or resetting the game state for a new chess game. 
+ * It modifies the game state variables pointed to by the parameters to represent the starting 
+ * position of a chess game.
+ * 
+ * @param bitboards Pointer to an array of 64-bit unsigned integers representing the chess board. 
+ *                  Each bitboard corresponds to a specific piece type and color, and each bit 
+ *                  within a bitboard represents whether a square is occupied by that piece.
+ * @param side Pointer to an integer representing the side to move next. This should be set to 
+ *             a value indicating whether it is white's or black's turn.
+ * @param enpassant Pointer to an integer representing the square where an en passant capture 
+ *                  can occur. If there is no such square, this should be set to a value that 
+ *                  indicates no en passant is possible.
+ * @param castle Pointer to an integer representing the castling rights. This should encode 
+ *               whether each side is allowed to castle king-side or queen-side.
+ */
+void restart(U64 *bitboards, int *side, int *enpassant, int *castle, int *half, int *full){
+    
+    /*Restarting the state flags of the game*/
+    *side = WHITE_P;
+    *enpassant = NO_SQ;
+    *castle = 0b1111;
+    *half = 0;
+    *full = 0;
 
+    /*Restarting the bitboards*/
+    bitboards[wP] = 0x00FF000000000000;
+    bitboards[wN] = 0x4200000000000000;
+    bitboards[wB] = 0x2400000000000000;
+    bitboards[wR] = 0x8100000000000000;
+    bitboards[wQ] = 0x0800000000000000;
+    bitboards[wK] = 0x1000000000000000;
+    
+    bitboards[bP] = 0x000000000000FF00;
+    bitboards[bN] = 0x0000000000000042;
+    bitboards[bB] = 0x0000000000000024;
+    bitboards[bR] = 0x0000000000000081;
+    bitboards[bQ] = 0x0000000000000008;
+    bitboards[bK] = 0x0000000000000010;
 
+    bitboards[wA] = 18446462598732840960ULL;
+    bitboards[bA] = 65535ULL;
+
+    bitboards[AP] = 18446462598732906495ULL;
+
+}

@@ -10,6 +10,6 @@ It is my first big project in C. I will learn basics of chess computing and poli
 
 
 # Updates from the last time
-1 - renamed the files to make it more understandable
-2 - Abstracted datas both in the engine and the game using different structures
-3 - fixed the bugs regarding the new init functions which are based on bitboards which allows the use of fen data 
+1 - renamed the files to make it more understandable  
+2 - Abstracted datas both in the engine and the game using different structures  
+3 - fixed the bugs regarding the new init functions which are based on bitboards which allows the use of fen data  

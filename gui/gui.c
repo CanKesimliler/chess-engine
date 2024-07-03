@@ -2,8 +2,9 @@
 #include <stdio.h>
 #include <raymath.h>
 #include <time.h>
-#include "pieces.h"
-#include "../board.h"
+#include "gui.h"
+#include "../engine.h"
+#include "../parser.h"
  
 /*Texture Definitions*/
 Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
@@ -11,31 +12,19 @@ Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
           white_knight_texture, black_knight_texture, white_queen_texture,
           black_queen_texture, white_king_texture, black_king_texture;
 
-/*Declaring bitboard representations for chess engine*/
-/*Declaring bitboards for all pieces*/
-U64 bitboards[14];
-
-/*Declaring necessery flags*/
-int side = -1; /*Side to move*/
-int enpassant = NO_SQ; /*Enpassant square*/
-int castle = 0b1111; /*Castle rights encoded bitwise*/ 
-/*1000 for black castle queen*/
-/*0100 for black castle king*/
-/*0010 for white castle queen*/
-/*0001 for white castle king*/
 
 int main() {
     
+    char choice;
+
+
     const int window_width = 800;
     const int window_height = 800;
 
     /*Declaring the chess board*/
     Board board;
 
-
-    /*Declaring necessary flags*/
-    int piece_selected = -1;
-
+    
     // Initialize the window
     InitWindow(window_width, window_height, "Chess Engine");
 
@@ -85,25 +74,13 @@ int main() {
     }
 
     /*Now that the textures are loaded we intialize the board*/
-    board = InitBoard();
-
-    /*Set the game states ready to play*/
-    restart(bitboards, &side, &enpassant, &castle);
+    InitBoard(&board);
 
     // Set the game to run at 60 frames-per-second
     SetTargetFPS(60);
 
     // Main game loop
     while (!WindowShouldClose()) {
-        
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-            
-            Vector2 mouse_position = GetMousePosition();
-            mouse_position.x = (int)mouse_position.x / TILESIZE;
-            mouse_position.y = (int)mouse_position.y / TILESIZE;
-            ActivateSquare(&board, mouse_position.x, mouse_position.y, &piece_selected);
-
-            }
         
 
         // Start drawing
@@ -112,8 +89,21 @@ int main() {
 
         // Draw the board
         DrawBoard(&board);
-        
         DrawPieces(&board);
+
+        // Check if the user clicked on a square
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            // Get the mouse position
+            Vector2 mouse = GetMousePosition();
+            // Check if the mouse is within the board
+            if (mouse.x >= 0 && mouse.x < window_width && mouse.y >= 0 && mouse.y < window_height) {
+                // Get the square that was clicked
+                mouse.x = (int)mouse.x / TILESIZE;
+                mouse.y = (int)mouse.y / TILESIZE;
+                // Activate the square
+                ActivateSquare(&board, &mouse);
+            }
+        }
 
         // End drawing
         EndDrawing();

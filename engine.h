@@ -15,6 +15,16 @@ struct MagicTable{
   U64 blackmask;
 } typedef MagicTable;
 
+struct Game{
+    U64 bitboards[15];
+    int side;
+    int enpassant;
+    int castle;
+    int half_moves;
+    int full_moves;
+} typedef Game;
+
+
 /*External variables*/
 extern U64 pawn_attack_table[2][64];
 extern U64 knight_attack_table[64];
@@ -165,8 +175,9 @@ U64 set_occupancy(int index, int bits, U64 attack_mask);
 U64 rook_attack(int square, U64 blockBB);
 U64 bishop_attack(int square, U64 blockBB);
 void init_slider_attacks();
+int is_occupied(U64 bitboard, int square);
 U64 find_magic_number(int square, int relevant_bits, int piece);
-void restart(U64 *bitboards, int *side, int *enpassant, int *castle, int *half, int* full);
+void restart_game(Game *game);
 
 extern U64 lookup_table[87988];
 

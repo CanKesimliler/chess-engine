@@ -2,9 +2,9 @@ CC = gcc
 
 CFLAGS = -Wall 
 
-TARGET = engine
+TARGET = main
 
-SRCS = engine.c board.c parser.c
+SRCS = main.c engine.c parser.c
 
 OBJS = $(SRCS:.c=.o)
 

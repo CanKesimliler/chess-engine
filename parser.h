@@ -1,6 +1,6 @@
 #ifndef PARSER_H_
 #define PARSER_H_
-#include "board.h"
+#include "engine.h"
 #define BASE 0ULL
 /*Parsing FEN strings*/
 /*rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1*/

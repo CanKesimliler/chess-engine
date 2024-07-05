@@ -280,7 +280,7 @@ U64 king_attacks(int square)
 }
 
 /*Mask bishop attacks*/
-U64 mask_bishop_attacks(int square)
+static inline U64 mask_bishop_attacks(int square)
 {
 
     /*Result attack bitboard*/
@@ -314,7 +314,7 @@ U64 mask_bishop_attacks(int square)
 }
 
 /*Function to generate rook attacks mask*/
-U64 mask_rook_attacks(int square)
+static inline U64 mask_rook_attacks(int square)
 {
 
     /* Result attack bitboard */
@@ -371,7 +371,7 @@ void init_pieces_attacks()
 }
 
 /*Generate bishop attack maps*/
-U64 generate_bishop_attacks(int square, U64 blockBB)
+static inline U64 generate_bishop_attacks(int square, U64 blockBB)
 {
 
     /*Result attack bitboard*/
@@ -423,7 +423,7 @@ U64 generate_bishop_attacks(int square, U64 blockBB)
 }
 
 /*Generate rook attack maps*/
-U64 generate_rook_attacks(int square, U64 blockBB)
+static inline U64 generate_rook_attacks(int square, U64 blockBB)
 {
 
     /* Result attack bitboard */
@@ -539,7 +539,7 @@ static U64 RNG_64B(){
 }
 
 /*Generate magic candidates*/
- U64 generate_magic_number(){
+static U64 generate_magic_number(){
     return RNG_64B() & RNG_64B() & RNG_64B(); 
  }
 
@@ -552,7 +552,7 @@ static U64 RNG_64B(){
 /*================================================*/
 
 /*Precalculating occupancy for attack tables bitboards*/
-U64 set_occupancy(int index, int bits, U64 attack_mask){
+static U64 set_occupancy(int index, int bits, U64 attack_mask){
 
     /*Occupancy bitboard*/
     U64 occupancy = 0UL;
@@ -579,7 +579,7 @@ U64 set_occupancy(int index, int bits, U64 attack_mask){
     return occupancy;
 }
 
-U64 find_magic_number(int square, int relevant_bits, int piece) {
+static U64 find_magic_number(int square, int relevant_bits, int piece) {
     int i = 0;
     int j = 0;
     int fail;
@@ -655,6 +655,13 @@ void init_slider_attacks() {
     }
 }
 
+
+/*================================================*/
+/*                                                */
+/*  Getting slider attacks from the lookup table  */
+/*                                                */
+/*================================================*/
+
 /**
  * Calculates the attack bitboard for a rook on a given square.
  * 
@@ -662,7 +669,7 @@ void init_slider_attacks() {
  * @param blockBB The bitboard representing the blocking pieces on the board.
  * @return The attack bitboard for the rook on the given square.
  */
-U64 rook_attack(int square, U64 blockBB){
+static inline U64 rook_attack(int square, U64 blockBB){
     int magic_index = (int)(((blockBB | RookMagicTable[square].blackmask) * RookMagicTable[square].magic) >> (64 - 12));
     return lookup_table[RookMagicTable[square].index + magic_index];
 }
@@ -674,9 +681,13 @@ U64 rook_attack(int square, U64 blockBB){
  * @param blockBB The blocking bitboard representing occupied squares.
  * @return The bishop attack bitboard.
  */
-U64 bishop_attack(int square, U64 blockBB) {
+static inline U64 bishop_attack(int square, U64 blockBB) {
     int magic_index = (int)(((blockBB | BishopMagicTable[square].blackmask) * BishopMagicTable[square].magic) >> (64 - 9));
     return lookup_table[BishopMagicTable[square].index + magic_index];
+}
+
+static inline U64 queen_attack(int square, U64 blockBB){
+    return rook_attack(square, blockBB) | bishop_attack(square, blockBB);
 }
 
 
@@ -708,5 +719,161 @@ void restart_game(Game* game){
     game->bitboards[bA] = 65535ULL;
 
     game->bitboards[AP] = 18446462598732906495ULL;
+    
+}
 
+/*================================================*/
+/*                                                */
+/*         Generating moves for pieces            */
+/*                                                */
+/*================================================*/
+
+static inline int is_square_attacked(int square, int side, U64 bitboards[]){
+    /*Keeping track of the state*/
+    U64 is_attacked = 0;
+
+    /*Checking pawns*/
+    is_attacked = (side == WHITE_P) ? (pawn_attack_table[BLACK_P][square] & bitboards[wP]) : (pawn_attack_table[WHITE_P][square] & bitboards[bP]);
+    if(is_attacked) return 1;
+    
+    /*Cheking knights*/
+    is_attacked = knight_attack_table[square] & ((side == WHITE_P) ? bitboards[wN] : bitboards[bN]);
+    if(is_attacked) return 1;
+
+    /*Checking bishops*/
+    is_attacked = bishop_attack(square, bitboards[AP]) & ((side == WHITE_P) ? bitboards[wB] : bitboards[bB]);
+    if(is_attacked) return 1;
+
+    /*Checking rooks*/
+    is_attacked = rook_attack(square, bitboards[AP]) & ((side == WHITE_P) ? bitboards[wR] : bitboards[bR]);
+    if(is_attacked) return 1;
+
+    /*Checking queens*/
+    is_attacked = queen_attack(square, bitboards[AP]) & ((side == WHITE_P) ? bitboards[wQ] : bitboards[bQ]);
+    if(is_attacked) return 1;
+
+    /*Checking kings*/
+    is_attacked = king_attack_table[square] & ((side == WHITE_P) ? bitboards[wK] : bitboards[bK]);
+    if(is_attacked) return 1;
+
+    return is_attacked;
+}
+
+static inline U64 squares_attacked(int side, U64 bitboards[]){
+    U64 attacks = 0UL;
+    int square = 0;
+    for(; square < 64; square++){
+        if(is_square_attacked(square, side, bitboards)){
+            SET_BIT(attacks, square);
+        }
+    }
+    return attacks;
+}
+
+
+inline void GenerateMoves(Game* game){
+    int source_sq, target_sq;
+    U64 attacks = 0UL;
+    U64 temp_bb;
+    for(int piece = wP; piece <= bK; piece++){
+        if(game->side == WHITE_P){
+            /*White pawn moves*/
+            temp_bb = game->bitboards[wP];
+            while(((source_sq) = get_first_1bit(temp_bb)) != NO_SQ){
+                /*Single pawn push*/
+                target_sq = source_sq - 8;
+                if(!GET_BIT(game->bitboards[AP], target_sq)){
+                    /*Double pawn push*/
+                    if(((A2 <= source_sq) && (source_sq <= H2)) && !GET_BIT(game->bitboards[AP], target_sq - 8)){
+                        printf("%s%s\n", CTSM[source_sq], CTSM[target_sq - 8]);
+                    }
+                    /*promotion*/
+                    else if((A7 <= source_sq) && (source_sq <= H7)){
+                    printf("%s%sQ\n", CTSM[source_sq], CTSM[target_sq]);
+                    printf("%s%sR\n", CTSM[source_sq], CTSM[target_sq]);
+                    printf("%s%sN\n", CTSM[source_sq], CTSM[target_sq]);
+                    printf("%s%sB\n", CTSM[source_sq], CTSM[target_sq]);
+                    }
+                    else{
+                        printf("%s%s\n", CTSM[source_sq], CTSM[target_sq]);
+                    }
+                }
+                /*Captures*/
+                attacks = pawn_attack_table[WHITE_P][source_sq] & game->bitboards[bA];
+                while (attacks){
+                    target_sq = get_first_1bit(attacks);
+                    /*Promotion captures*/
+                    if((A7 <= source_sq) && (source_sq <= H7)){
+                        printf("%sx%sQ\n", CTSM[source_sq], CTSM[target_sq]);
+                        printf("%sx%sR\n", CTSM[source_sq], CTSM[target_sq]);
+                        printf("%sx%sN\n", CTSM[source_sq], CTSM[target_sq]);
+                        printf("%sx%sB\n", CTSM[source_sq], CTSM[target_sq]);
+                        break;
+                    }
+                    printf("%sx%s\n", CTSM[source_sq], CTSM[target_sq]);
+                    REMOVE_BIT(attacks, target_sq);
+                }
+                REMOVE_BIT(temp_bb, source_sq);
+            }
+            /*En passant moves*/
+            if((target_sq = game->enpassant) != NO_SQ){
+                attacks = pawn_attack_table[BLACK_P][target_sq] & game->bitboards[wP];
+                while(attacks){
+                    source_sq = get_first_1bit(attacks);
+                    printf("%sx%s\n", CTSM[source_sq], CTSM[target_sq]);
+                    REMOVE_BIT(attacks, source_sq);
+                }
+            }
+        }
+        /*Black Moves*/
+        if(game->side == BLACK_P){
+            /*Black pawn moves*/
+            temp_bb = game->bitboards[bP];
+            while(((source_sq) = get_first_1bit(temp_bb)) != NO_SQ){
+                /*Single pawn push*/
+                target_sq = source_sq + 8;
+                if(!GET_BIT(game->bitboards[AP], target_sq)){
+                    /*Double pawn push*/
+                    if(((A7 <= source_sq) && (source_sq <= H7)) && !GET_BIT(game->bitboards[AP], target_sq + 8)){
+                        printf("%s%s\n", CTSM[source_sq], CTSM[target_sq + 8]);
+                    }
+                    /*promotion*/
+                    else if((A2 <= source_sq) && (source_sq <= H2)){
+                    printf("%s%sQ\n", CTSM[source_sq], CTSM[target_sq]);
+                    printf("%s%sR\n", CTSM[source_sq], CTSM[target_sq]);
+                    printf("%s%sN\n", CTSM[source_sq], CTSM[target_sq]);
+                    printf("%s%sB\n", CTSM[source_sq], CTSM[target_sq]);
+                    }
+                    else{
+                        printf("%s%s\n", CTSM[source_sq], CTSM[target_sq]);
+                    }
+                }
+                /*Captures*/
+                attacks = pawn_attack_table[BLACK_P][source_sq] & game->bitboards[wA];
+                while (attacks){
+                    target_sq = get_first_1bit(attacks);
+                    /*Promotion captures*/
+                    if((A2 <= source_sq) && (source_sq <= H2)){
+                        printf("%sx%sQ\n", CTSM[source_sq], CTSM[target_sq]);
+                        printf("%sx%sR\n", CTSM[source_sq], CTSM[target_sq]);
+                        printf("%sx%sN\n", CTSM[source_sq], CTSM[target_sq]);
+                        printf("%sx%sB\n", CTSM[source_sq], CTSM[target_sq]);
+                        break;
+                    }
+                    printf("%sx%s\n", CTSM[source_sq], CTSM[target_sq]);
+                    REMOVE_BIT(attacks, target_sq);
+                }
+                REMOVE_BIT(temp_bb, source_sq);
+            }
+            /*En passant moves*/
+            if((target_sq = game->enpassant) != NO_SQ){
+                attacks = pawn_attack_table[WHITE_P][target_sq] & game->bitboards[bP];
+                while(attacks){
+                    source_sq = get_first_1bit(attacks);
+                    printf("%sx%s\n", CTSM[source_sq], CTSM[target_sq]);
+                    REMOVE_BIT(attacks, source_sq);
+                }
+            }
+        }
+    }
 }

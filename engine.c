@@ -10,10 +10,10 @@ U64 rookBlackMasks[64];
 
 U64 lookup_table[87988];
 
-
 MagicTable RookBlackMagic[64];
 MagicTable BishopBlackMagic[64];
 
+Move MoveList = { {0}, 0 };
 
 /*Index to square map*/
 const char* CTSM[64] = {
@@ -25,6 +25,18 @@ const char* CTSM[64] = {
     "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
     "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
     "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
+};
+
+/*Promoted pieces to piece char array*/
+char promoted_pieces[] = {
+    [(int)'Q'] = 'q',
+    [(int)'R'] = 'r',
+    [(int)'B'] = 'b',
+    [(int)'N'] = 'n',
+    [(int)'q'] = 'q',
+    [(int)'r'] = 'r',
+    [(int)'b'] = 'b',
+    [(int)'n'] = 'n'
 };
 
 const int bishop_rel_bits[64] = {
@@ -770,9 +782,135 @@ static inline U64 squares_attacked(int side, U64 bitboards[]){
     return attacks;
 }
 
+// Inline helper functions
 
-inline void GenerateMoves(Game* game) {
+/**
+ * Prints a regular move from one square to another.
+ * @param from The starting square.
+ * @param to The target square.
+ */
+inline static void print_move(const char* from, const char* to) {
+    printf("%s%s\n", from, to);
+}
+
+/**
+ * Prints a capture move from one square to another.
+ * @param from The starting square.
+ * @param to The target square.
+ */
+inline static void print_capture(const char* from, const char* to) {
+    printf("%sx%s\n", from, to);
+}
+
+/**
+ * Prints a promotion move from one square to another with a specified promotion piece.
+ * @param from The starting square.
+ * @param to The target square.
+ * @param promotion The promotion piece.
+ */
+inline static void print_promotion(const char* from, const char* to, char promotion) {
+    printf("%s%s%c\n", from, to, promotion);
+}
+
+/**
+ * Handles pawn moves for a given game state.
+ * @param game The game state.
+ * @param source_sq The source square of the pawn.
+ * @param direction The direction of the pawn's movement.
+ * @param startRow The starting row of the pawns.
+ * @param promoRow The promotion row of the pawns.
+ * @param enemyPieces The bitboard representing the enemy pieces.
+ */
+inline static void handle_pawn_moves(Game* game, int source_sq, int direction, int startRow, int promoRow, U64 enemyPieces) {
+    int target_sq = source_sq + direction;
+
+    // Single pawn push
+    if (!GET_BIT(game->bitboards[AP], target_sq)) {
+        // Double pawn push
+        if ((startRow <= source_sq && source_sq <= startRow + 7) && !GET_BIT(game->bitboards[AP], target_sq + direction)) {
+            print_move(CTSM[source_sq], CTSM[target_sq + direction]);
+        }
+        // Promotion
+        if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'Q');
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'R');
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'N');
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'B');
+        } else {
+            print_move(CTSM[source_sq], CTSM[target_sq]);
+        }
+    }
+
+    // Pawn captures
+    U64 attacks = pawn_attack_table[game->side][source_sq] & game->bitboards[enemyPieces];
+    while (attacks) {
+        target_sq = get_first_1bit(attacks);
+        if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'Q');
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'R');
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'N');
+            print_promotion(CTSM[source_sq], CTSM[target_sq], 'B');
+        } else {
+            print_capture(CTSM[source_sq], CTSM[target_sq]);
+        }
+        REMOVE_BIT(attacks, target_sq);
+    }
+}
+
+/**
+ * Handles en passant captures for a given game state.
+ * @param game The game state.
+ * @param piece The piece type.
+ */
+inline static void handle_en_passant(Game* game, int piece) {
+    if ((game->enpassant) != NO_SQ) {
+        U64 attacks = pawn_attack_table[(game->side == WHITE_P) ? BLACK_P : WHITE_P][game->enpassant] & game->bitboards[piece];
+        while (attacks) {
+            int source_sq = get_first_1bit(attacks);
+            print_capture(CTSM[source_sq], CTSM[game->enpassant]);
+            REMOVE_BIT(attacks, source_sq);
+        }
+    }
+}
+
+/**
+ * Handles castling moves for a given game state.
+ * @param game The game state.
+ */
+inline static void handle_castling(Game* game) {
+    if (game->side == WHITE_P) {
+        if ((game->castle & WKC) && !GET_BIT(game->bitboards[AP], F1) && !GET_BIT(game->bitboards[AP], G1)) {
+            if (!is_square_attacked(E1, BLACK_P, game->bitboards) && !is_square_attacked(F1, BLACK_P, game->bitboards) && !is_square_attacked(G1, BLACK_P, game->bitboards)) {
+                print_move("e1", "g1");
+            }
+        }
+        if ((game->castle & WQC) && !GET_BIT(game->bitboards[AP], D1) && !GET_BIT(game->bitboards[AP], C1) && !GET_BIT(game->bitboards[AP], B1)) {
+            if (!is_square_attacked(E1, BLACK_P, game->bitboards) && !is_square_attacked(D1, BLACK_P, game->bitboards) && !is_square_attacked(C1, BLACK_P, game->bitboards)) {
+                print_move("e1", "c1");
+            }
+        }
+    } else {
+        if ((game->castle & BKC) && !GET_BIT(game->bitboards[AP], F8) && !GET_BIT(game->bitboards[AP], G8)) {
+            if (!is_square_attacked(E8, WHITE_P, game->bitboards) && !is_square_attacked(F8, WHITE_P, game->bitboards) && !is_square_attacked(G8, WHITE_P, game->bitboards)) {
+                print_move("e8", "g8");
+            }
+        }
+        if ((game->castle & BQC) && !GET_BIT(game->bitboards[AP], D8) && !GET_BIT(game->bitboards[AP], C8) && !GET_BIT(game->bitboards[AP], B8)) {
+            if (!is_square_attacked(E8, WHITE_P, game->bitboards) && !is_square_attacked(D8, WHITE_P, game->bitboards) && !is_square_attacked(C8, WHITE_P, game->bitboards)) {
+                print_move("e8", "c8");
+            }
+        }
+    }
+}
+
+
+/**
+ * Generates all possible moves for a given game state.
+ * @param game The game state.
+ */
+static inline void GenerateMoves(Game* game) {
     int source_sq, target_sq;
+    int move = 0;
     U64 attacks = 0UL;
     U64 temp_bb;
     int direction = (game->side == WHITE_P) ? -8 : 8;
@@ -780,35 +918,110 @@ inline void GenerateMoves(Game* game) {
     int promoRow = (game->side == WHITE_P) ? A7 : A2;
     int enemyPieces = (game->side == WHITE_P) ? bA : wA;
 
-    // Calculate the occupancy bitboard for the entire board
-    U64 occupancy = 0UL;
-    for (int i = 0; i < 12; ++i) {
-        occupancy |= game->bitboards[i];
-    }
+    int start_piece = (game->side == WHITE_P) ? wP : bP;
+    int end_piece = (game->side == WHITE_P) ? wK : bK;
 
-    for (int i = 0; i < 6; ++i) {
-        int piece = (game->side == WHITE_P) ? i : i+6;
+    // Iterate through each piece type
+    for (int piece = start_piece; piece <= end_piece; piece++) {
         temp_bb = game->bitboards[piece];
 
+        // Iterate through each square with the current piece
         while ((source_sq = get_first_1bit(temp_bb)) != NO_SQ) {
-            if (piece == wP || piece == bP) {
-                // Pawn moves logic remains unchanged
-            } else if (piece == wN || piece == bN) {
-                // Knight moves logic remains unchanged
-            } else if (piece == wB || piece == bB) {
-                // Bishop moves
-                attacks = bishop_attack(source_sq, occupancy) & ~game->bitboards[game->side];
-            } else if (piece == wR || piece == bR) {
-                // Rook moves
-                attacks = rook_attack(source_sq, occupancy) & ~game->bitboards[game->side];
-            } else if (piece == wQ || piece == bQ) {
-                // Queen moves
-                attacks = queen_attack(source_sq, occupancy) & ~game->bitboards[game->side];
-            } else if (piece == wK || piece == bK) {
-                // King moves logic remains unchanged
+            switch (piece) {
+                case wP:
+                case bP:
+                    handle_pawn_moves(game, source_sq, direction, startRow, promoRow, enemyPieces);
+                    break;
+
+                case wN:
+                case bN:
+                    attacks = knight_attack_table[source_sq] & ~game->bitboards[game->side];
+                    break;
+
+                case wB:
+                case bB:
+                    attacks = bishop_attack(source_sq, game->bitboards[AP]) & ~game->bitboards[game->side];
+                    break;
+
+                case wR:
+                case bR:
+                    attacks = rook_attack(source_sq, game->bitboards[AP]) & ~game->bitboards[game->side];
+                    break;
+
+                case wQ:
+                case bQ:
+                    attacks = queen_attack(source_sq, game->bitboards[AP]) & ~game->bitboards[game->side];
+                    break;
+
+                case wK:
+                case bK:
+                    attacks = king_attack_table[source_sq] & ~game->bitboards[game->side];
+                    handle_castling(game);
+                    break;
+
+                default:
+                    break;
             }
-            // Processing attacks logic remains unchanged
+
+            // Iterate through each target square and print the move
+            while (attacks) {
+                target_sq = get_first_1bit(attacks);
+                if (GET_BIT(game->bitboards[enemyPieces], target_sq)) {
+                    print_capture(CTSM[source_sq], CTSM[target_sq]);
+                } else {
+                    print_move(CTSM[source_sq], CTSM[target_sq]);
+                }
+                REMOVE_BIT(attacks, target_sq);
+            }
+
+            // Handle en passant captures
+            if (piece == wP || piece == bP) {
+                handle_en_passant(game, piece);
+            }
+
             REMOVE_BIT(temp_bb, source_sq);
         }
+    }
+}
+
+/* 
+Decoding the move 
+        Binary Representation                    Hex Representation
+    0000 0000 0000 0000 0011 1111 Source Square      0x3f
+    0000 0000 0000 1111 1100 0000 Target Square      0xfc0
+    0000 0000 1111 0000 0000 0000 Piece              0xf000
+    0000 1111 0000 0000 0000 0000 Promoted Piece     0xf0000    
+    0001 0000 0000 0000 0000 0000 Capture Flag       0x100000
+    0010 0000 0000 0000 0000 0000 Double Pawn Push   0x200000
+    0100 0000 0000 0000 0000 0000 EnPassant Flag     0x400000
+    1000 0000 0000 0000 0000 0000 Castling Flag      0x800000
+*/
+
+
+/**
+ * Adds a move to the MoveList.
+ *
+ * @param MoveList The MoveList to add the move to.
+ * @param move The move to be added.
+ */
+static inline void addMove(Move *MoveList, int move){
+    MoveList->moves[MoveList->moveCount++] = move;
+}
+/*For UCI*/
+void printMove(int move){
+    printf("%s%s%c\n",
+    CTSM[GET_SOURCE_SQUARE(move)], 
+    CTSM[GET_TARGET_SQUARE(move)], 
+    GET_PROMOTED_PIECE(move));
+}
+
+/*For debugging*/
+void printMoveList(Move *MoveList){
+    int index = 0;
+    for(; index < MoveList->moveCount; index++){
+        printf("\n Move  Piece  Capture  Double  Enpassant  Castling\n%s%s%c\n",
+        CTSM[GET_SOURCE_SQUARE(MoveList->moves[index])], 
+        CTSM[GET_TARGET_SQUARE(MoveList->moves[index])], 
+        GET_PROMOTED_PIECE(MoveList->moves[index]));
     }
 }

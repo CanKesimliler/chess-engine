@@ -148,7 +148,6 @@ void InitBoard(Board *board)
     int i = 0;
     for (; i < 64; i++) board->squares[i].position = (Vector2){i % FILES, i / RANKS};
     RestartBoard(board);
-    InitPieces(board);
 };
 
 void RestartBoard(Board *board){

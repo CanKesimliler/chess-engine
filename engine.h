@@ -24,15 +24,10 @@ struct Game{
     int full_moves;
 } typedef Game;
 
-
-/*External variables*/
-extern U64 pawn_attack_table[2][64];
-extern U64 knight_attack_table[64];
-extern U64 king_attack_table[64];
-extern const int bishop_rel_bits[64];
-extern const int rook_rel_bits[64];
-extern U64 bishop_magic[64];
-extern U64 rook_magic[64];
+struct Move{
+   int moves[256];
+   int moveCount;
+} typedef Move;
 
 /*Bitwise macros*/
 #define GET_BIT(bitboard, square) ((bitboard) & (1UL << (square))) 
@@ -41,6 +36,26 @@ extern U64 rook_magic[64];
 #define SET_BIT_NUM(board, square) ((board) | (1UL << (square)))
 #define COUNT_BITS(bitboard) __builtin_popcountl((bitboard))
 #define REMOVE_BIT(board, square) (board) &= ~(1UL << (square))
+
+/*Macro for encoding the moves*/
+#define ENCODE_MOVE(source, target, piece, promotion, capture, doublePP, enpassant, castle) \
+(source) |           \
+(target << 6) |      \
+(piece << 12) |      \
+(promotion << 16) |  \
+(capture << 20) |    \
+(doublePP << 21) |   \
+(enpassant << 22) |  \
+(castle << 23)
+/*Macros for decoding the moves*/
+#define GET_SOURCE_SQUARE(move) (move & 0x3f)
+#define GET_TARGET_SQUARE(move) ((move & 0xfc0) >> 6)
+#define GET_PIECE(move) ((move & 0xf000) >> 12)
+#define GET_PROMOTION_PIECE(move) ((move & 0xf0000) >> 16)
+#define GET_CAPTURE_FLAG(move) ((move & 0x100000) >> 20)
+#define GET_DOUBLE_PP_FLAG(move) ((move & 0x200000) >> 21)
+#define GET_ENPASSANT_FLAG(move) ((move & 0x400000) >> 22)
+#define GET_CASTLE_FLAG(move) ((move & 0x800000) >> 23) 
 
 /*Enum for chess squares*/
 enum ChessSquare {
@@ -164,22 +179,36 @@ Bitboard: 4557430888798830399d*/
 U64 pawn_attacks(int square, int color); 
 U64 knight_attacks(int square);
 U64 king_attacks(int square);
-U64 mask_rook_attacks(int square);
-U64 mask_bishop_attacks(int square);
-U64 generate_rook_attacks(int square, U64 blockBB);
-U64 generate_bishop_attacks(int square, U64 blockBB);
+static inline U64 mask_rook_attacks(int square);
+static inline U64 mask_bishop_attacks(int square);
+static inline  U64 generate_rook_attacks(int square, U64 blockBB);
+static inline U64 generate_bishop_attacks(int square, U64 blockBB);
 void print_bitboard(U64 bitboard);
 void init_pieces_attacks();
-U64 generate_magic_number();
-U64 set_occupancy(int index, int bits, U64 attack_mask);
-U64 rook_attack(int square, U64 blockBB);
-U64 bishop_attack(int square, U64 blockBB);
+static U64 generate_magic_number();
+static U64 set_occupancy(int index, int bits, U64 attack_mask);
+static inline U64 rook_attack(int square, U64 blockBB);
+static inline U64 bishop_attack(int square, U64 blockBB);
+static inline U64 queen_attack(int square, U64 blockBB);
 void init_slider_attacks();
 int is_occupied(U64 bitboard, int square);
-U64 find_magic_number(int square, int relevant_bits, int piece);
+static U64 find_magic_number(int square, int relevant_bits, int piece);
 void restart_game(Game *game);
+static inline int is_square_attacked(int square, int side, U64 bitboards[]);
+static inline U64 squares_attacked(int side, U64 bitboards[]);
+static inline void handle_castling(Game* game);
+static inline void handle_en_passant(Game* game, int piece);
 
-extern U64 lookup_table[87988];
+inline static void handle_pawn_moves(Game* game, int source_sq, int direction, int startRow, int promoRow, U64 enemyPieces);
+inline static void print_move(const char* from, const char* to);
+inline static void print_capture(const char* from, const char* to);
+static inline void GenerateMoves(Game *game);
+static inline void addMove(Move *MoveList, int move);
+void printMove(int move);
+void printMoveList(Move *MoveList);
+extern const char* CTSM[64];
+U64 lookup_table[87988];
+extern Move MoveList;
 
 
 

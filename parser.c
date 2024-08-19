@@ -1,5 +1,5 @@
 #include "parser.h"
-void parse_fen(char *fen, U64 *bitboards, int *side, int *enpassant, int *castle, int *half, int* full){
+static void parse_fen(char *fen, U64 *bitboards, int *side, int *enpassant, int *castle, int *half, int* full){
     int i = 0;
     int square = 0;
     
@@ -65,9 +65,16 @@ void parse_fen(char *fen, U64 *bitboards, int *side, int *enpassant, int *castle
         *castle |= (fen[++i] == 'k') ? BKC : 0;
         *castle |= (fen[++i] == 'q') ? BQC : 0;
         i+=2;
-        *enpassant = (fen[i] != '-') ? (fen[i] - 97) + 8 * (fen[i+1] - 49) : NO_SQ;
+        *enpassant = (fen[i] != '-') ? ((fen[i] - 'a') + 8 * (7 - (fen[i+1] - '1'))) : NO_SQ;
         i += (fen[i] != '-') ? 3 : 2;
         *half = (int)fen[i++] - 48;
         *full = (int)fen[++i] - 48;
 }
 
+void parse_fen_gui(Board *board, char *fen){
+    parse_fen(fen, board->bitboards, &board->side, &board->enpassant, &board->castle, &board->half_moves, &board->full_moves);
+}
+
+void parse_fen_engine(Game *game, char *fen){
+    parse_fen(fen, game->bitboards, &game->side, &game->enpassant, &game->castle, &game->half_moves, &game->full_moves);
+}

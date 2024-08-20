@@ -29,14 +29,30 @@ const char* CTSM[64] = {
 
 /*Promoted pieces to piece char array*/
 char promoted_pieces[] = {
-    [(int)'Q'] = 'q',
-    [(int)'R'] = 'r',
-    [(int)'B'] = 'b',
-    [(int)'N'] = 'n',
-    [(int)'q'] = 'q',
-    [(int)'r'] = 'r',
-    [(int)'b'] = 'b',
-    [(int)'n'] = 'n'
+    [wQ] = 'q',
+    [wR] = 'r',
+    [wB] = 'b',
+    [wN] = 'n',
+    [bQ] = 'q',
+    [bR] = 'r',
+    [bB] = 'b',
+    [bN] = 'n'
+};
+
+/*Piece char array to promoted pieces*/
+char pieces[] = {
+    [wP] = 'P',
+    [wR] = 'R',
+    [wN] = 'N',
+    [wB] = 'B',
+    [wQ] = 'Q',
+    [wK] = 'K',
+    [bP] = 'p',
+    [bR] = 'r',
+    [bN] = 'n',
+    [bB] = 'b',
+    [bQ] = 'q',
+    [bK] = 'k'
 };
 
 const int bishop_rel_bits[64] = {
@@ -823,21 +839,21 @@ inline static void print_promotion(const char* from, const char* to, char promot
  */
 inline static void handle_pawn_moves(Game* game, int source_sq, int direction, int startRow, int promoRow, U64 enemyPieces) {
     int target_sq = source_sq + direction;
-
+    int bias = (int)((float)startRow*(-3/(float)20)+7.3);
     // Single pawn push
     if (!GET_BIT(game->bitboards[AP], target_sq)) {
         // Double pawn push
         if ((startRow <= source_sq && source_sq <= startRow + 7) && !GET_BIT(game->bitboards[AP], target_sq + direction)) {
-            print_move(CTSM[source_sq], CTSM[target_sq + direction]);
+            addMove(&MoveList, ENCODE_MOVE(source_sq, (target_sq + direction), (wP+bias), 0, 0, 1, 0, 0));
         }
         // Promotion
         if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'Q');
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'R');
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'N');
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'B');
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wQ+bias), 0, 0, 0, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wR+bias), 0, 0, 0, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wN+bias), 0, 0, 0, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wB+bias), 0, 0, 0, 0));
         } else {
-            print_move(CTSM[source_sq], CTSM[target_sq]);
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), 0, 0, 0, 0, 0));
         }
     }
 
@@ -846,12 +862,12 @@ inline static void handle_pawn_moves(Game* game, int source_sq, int direction, i
     while (attacks) {
         target_sq = get_first_1bit(attacks);
         if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'Q');
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'R');
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'N');
-            print_promotion(CTSM[source_sq], CTSM[target_sq], 'B');
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wQ+bias), 1, 0, 0, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wR+bias), 1, 0, 0, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wN+bias), 1, 0, 0, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wB+bias), 1, 0, 0, 0));
         } else {
-            print_capture(CTSM[source_sq], CTSM[target_sq]);
+            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), 0, 1, 0, 0, 0));
         }
         REMOVE_BIT(attacks, target_sq);
     }
@@ -863,12 +879,11 @@ inline static void handle_pawn_moves(Game* game, int source_sq, int direction, i
  * @param piece The piece type.
  */
 inline static void handle_en_passant(Game* game, int piece) {
-    printf("En passant: %d\n", game->enpassant);
     if ((game->enpassant) != NO_SQ) {
         U64 attacks = pawn_attack_table[(game->side == WHITE_P) ? BLACK_P : WHITE_P][game->enpassant] & game->bitboards[piece];
         while (attacks) {
             int source_sq = get_first_1bit(attacks);
-            print_capture(CTSM[source_sq], CTSM[game->enpassant]);
+            addMove(&MoveList, ENCODE_MOVE(source_sq, game->enpassant, piece, 0, 1, 0, 1, 0));
             REMOVE_BIT(attacks, source_sq);
         }
     }
@@ -882,23 +897,23 @@ inline static void handle_castling(Game* game) {
     if (game->side == WHITE_P) {
         if ((game->castle & WKC) && !GET_BIT(game->bitboards[AP], F1) && !GET_BIT(game->bitboards[AP], G1)) {
             if (!is_square_attacked(E1, BLACK_P, game->bitboards) && !is_square_attacked(F1, BLACK_P, game->bitboards) && !is_square_attacked(G1, BLACK_P, game->bitboards)) {
-                print_move("e1", "g1");
+                addMove(&MoveList, ENCODE_MOVE(E1, G1, wK, 0, 0, 0, 0, 1));
             }
         }
         if ((game->castle & WQC) && !GET_BIT(game->bitboards[AP], D1) && !GET_BIT(game->bitboards[AP], C1) && !GET_BIT(game->bitboards[AP], B1)) {
             if (!is_square_attacked(E1, BLACK_P, game->bitboards) && !is_square_attacked(D1, BLACK_P, game->bitboards) && !is_square_attacked(C1, BLACK_P, game->bitboards)) {
-                print_move("e1", "c1");
+                addMove(&MoveList, ENCODE_MOVE(E1, C1, wK, 0, 0, 0, 0, 1));
             }
         }
     } else {
         if ((game->castle & BKC) && !GET_BIT(game->bitboards[AP], F8) && !GET_BIT(game->bitboards[AP], G8)) {
             if (!is_square_attacked(E8, WHITE_P, game->bitboards) && !is_square_attacked(F8, WHITE_P, game->bitboards) && !is_square_attacked(G8, WHITE_P, game->bitboards)) {
-                print_move("e8", "g8");
+                addMove(&MoveList, ENCODE_MOVE(E8, G8, bK, 0, 0, 0, 0, 1));
             }
         }
         if ((game->castle & BQC) && !GET_BIT(game->bitboards[AP], D8) && !GET_BIT(game->bitboards[AP], C8) && !GET_BIT(game->bitboards[AP], B8)) {
             if (!is_square_attacked(E8, WHITE_P, game->bitboards) && !is_square_attacked(D8, WHITE_P, game->bitboards) && !is_square_attacked(C8, WHITE_P, game->bitboards)) {
-                print_move("e8", "c8");
+                addMove(&MoveList, ENCODE_MOVE(E8, C8, bK, 0, 0, 0, 0, 1));
             }
         }
     }
@@ -918,7 +933,7 @@ inline void GenerateMoves(Game* game) {
     int startRow = (game->side == WHITE_P) ? A2 : A7;
     int promoRow = (game->side == WHITE_P) ? A7 : A2;
     int enemyPieces = (game->side == WHITE_P) ? bA : wA;
-
+    int friendlyPieces = (game->side == WHITE_P) ? wA : bA;
     int start_piece = (game->side == WHITE_P) ? wP : bP;
     int end_piece = (game->side == WHITE_P) ? wK : bK;
 
@@ -968,9 +983,9 @@ inline void GenerateMoves(Game* game) {
             while (attacks) {
                 target_sq = get_first_1bit(attacks);
                 if (GET_BIT(game->bitboards[enemyPieces], target_sq)) {
-                    print_capture(CTSM[source_sq], CTSM[target_sq]);
-                } else {
-                    print_move(CTSM[source_sq], CTSM[target_sq]);
+                    addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 1, 0, 0, 0));
+                } else if(!GET_BIT(game->bitboards[friendlyPieces], target_sq)){
+                    addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 0, 0, 0, 0));
                 }
                 REMOVE_BIT(attacks, target_sq);
             }
@@ -1018,11 +1033,21 @@ void printMove(int move){
 
 /*For debugging*/
 void printMoveList(Move *MoveList){
+    if(MoveList->moveCount == 0){
+        printf("\nNo moves found\n");
+        return;
+    }
     int index = 0;
     for(; index < MoveList->moveCount; index++){
-        printf("\n Move  Piece  Capture  Double  Enpassant  Castling\n%s%s%c\n",
+        printf("\n Move  Piece  Capture  Double  Enpassant  Castling\n %s%s%c    %c       %d       %d        %d          %d\n\n",
         CTSM[GET_SOURCE_SQUARE(MoveList->moves[index])], 
         CTSM[GET_TARGET_SQUARE(MoveList->moves[index])], 
-        GET_PROMOTED_PIECE(MoveList->moves[index]));
+        promoted_pieces[GET_PROMOTED_PIECE(MoveList->moves[index])],
+        pieces[GET_PIECE(MoveList->moves[index])],
+        GET_CAPTURE_FLAG(MoveList->moves[index]),
+        GET_DOUBLE_PP_FLAG(MoveList->moves[index]),
+        GET_ENPASSANT_FLAG(MoveList->moves[index]),
+        GET_CASTLE_FLAG(MoveList->moves[index]));
     }
+    printf("\nTotal number of moves: %d\n", MoveList->moveCount);
 }

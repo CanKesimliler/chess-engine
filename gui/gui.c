@@ -75,7 +75,8 @@ int main() {
 
     /*Now that the textures are loaded we intialize the board*/
     InitBoard(&board);
-    parse_fen_gui(&board, "r2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18");
+    parse_fen_gui(&board, "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b KQ - 3 2");
+    //2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18
     InitPieces(&board);
 
     // Set the game to run at 60 frames-per-second

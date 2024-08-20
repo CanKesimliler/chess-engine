@@ -863,6 +863,7 @@ inline static void handle_pawn_moves(Game* game, int source_sq, int direction, i
  * @param piece The piece type.
  */
 inline static void handle_en_passant(Game* game, int piece) {
+    printf("En passant: %d\n", game->enpassant);
     if ((game->enpassant) != NO_SQ) {
         U64 attacks = pawn_attack_table[(game->side == WHITE_P) ? BLACK_P : WHITE_P][game->enpassant] & game->bitboards[piece];
         while (attacks) {
@@ -908,7 +909,7 @@ inline static void handle_castling(Game* game) {
  * Generates all possible moves for a given game state.
  * @param game The game state.
  */
-static inline void GenerateMoves(Game* game) {
+inline void GenerateMoves(Game* game) {
     int source_sq, target_sq;
     int move = 0;
     U64 attacks = 0UL;
@@ -1004,7 +1005,7 @@ Decoding the move
  * @param MoveList The MoveList to add the move to.
  * @param move The move to be added.
  */
-static inline void addMove(Move *MoveList, int move){
+ inline void addMove(Move *MoveList, int move){
     MoveList->moves[MoveList->moveCount++] = move;
 }
 /*For UCI*/

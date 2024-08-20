@@ -60,12 +60,28 @@ static void parse_fen(char *fen, U64 *bitboards, int *side, int *enpassant, int 
         i++;
         *side = (fen[i++] == 'w') ? WHITE_P : BLACK_P;
         *castle = 0;
-        *castle |= (fen[++i] == 'K') ? WKC : 0;
-        *castle |= (fen[++i] == 'Q') ? WQC : 0;
-        *castle |= (fen[++i] == 'k') ? BKC : 0;
-        *castle |= (fen[++i] == 'q') ? BQC : 0;
-        i+=2;
-        *enpassant = (fen[i] != '-') ? ((fen[i] - 'a') + 8 * (7 - (fen[i+1] - '1'))) : NO_SQ;
+        while (fen[++i] != ' ')
+        {
+            switch (fen[i])
+            {
+            case 'K':
+                *castle |= WKC;
+                break;
+            case 'Q':
+                *castle |= WQC;
+                break;
+            case 'k':
+                *castle |= BKC;
+                break;
+            case 'q':
+                *castle |= BQC;
+                break;
+            case '-':
+                break;
+            }
+        }
+        i++;
+        *enpassant = (fen[i] != '-') ? ((fen[i] - 'a') + 8 * (fen[i+1] - '1')) : NO_SQ;
         i += (fen[i] != '-') ? 3 : 2;
         *half = (int)fen[i++] - 48;
         *full = (int)fen[++i] - 48;

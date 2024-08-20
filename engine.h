@@ -51,7 +51,7 @@ struct Move{
 #define GET_SOURCE_SQUARE(move) (move & 0x3f)
 #define GET_TARGET_SQUARE(move) ((move & 0xfc0) >> 6)
 #define GET_PIECE(move) ((move & 0xf000) >> 12)
-#define GET_PROMOTION_PIECE(move) ((move & 0xf0000) >> 16)
+#define GET_PROMOTED_PIECE(move) ((move & 0xf0000) >> 16)
 #define GET_CAPTURE_FLAG(move) ((move & 0x100000) >> 20)
 #define GET_DOUBLE_PP_FLAG(move) ((move & 0x200000) >> 21)
 #define GET_ENPASSANT_FLAG(move) ((move & 0x400000) >> 22)
@@ -202,8 +202,8 @@ static inline void handle_en_passant(Game* game, int piece);
 inline static void handle_pawn_moves(Game* game, int source_sq, int direction, int startRow, int promoRow, U64 enemyPieces);
 inline static void print_move(const char* from, const char* to);
 inline static void print_capture(const char* from, const char* to);
-static inline void GenerateMoves(Game *game);
-static inline void addMove(Move *MoveList, int move);
+extern inline void GenerateMoves(Game *game); // change to static after debugging
+extern inline void addMove(Move *MoveList, int move);  // change to static after debugging
 void printMove(int move);
 void printMoveList(Move *MoveList);
 extern const char* CTSM[64];

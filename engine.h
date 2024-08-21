@@ -2,6 +2,7 @@
 #define BOARD_H_
 
 #include <stdio.h>
+#include <string.h>
 #define U64 unsigned long 
 #define WHITE_P 0
 #define BLACK_P 1
@@ -47,6 +48,7 @@ struct Move{
 (doublePP << 21) |   \
 (enpassant << 22) |  \
 (castle << 23)
+
 /*Macros for decoding the moves*/
 #define GET_SOURCE_SQUARE(move) (move & 0x3f)
 #define GET_TARGET_SQUARE(move) ((move & 0xfc0) >> 6)
@@ -56,6 +58,11 @@ struct Move{
 #define GET_DOUBLE_PP_FLAG(move) ((move & 0x200000) >> 21)
 #define GET_ENPASSANT_FLAG(move) ((move & 0x400000) >> 22)
 #define GET_CASTLE_FLAG(move) ((move & 0x800000) >> 23) 
+
+/*Macros for copying and restoring the game state*/
+#define COPY_GAME() \
+memcpy
+
 
 /*Enum for chess squares*/
 enum ChessSquare {
@@ -207,6 +214,7 @@ extern inline void addMove(Move *MoveList, int move);  // change to static after
 void printMove(int move);
 void printMoveList(Move *MoveList);
 extern const char* CTSM[64];
+extern Game game_copy;
 U64 lookup_table[87988];
 extern Move MoveList;
 

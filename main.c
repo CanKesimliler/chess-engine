@@ -5,7 +5,7 @@
 
 
 int main(void){
-    Game game;
+    Game game, game_copy;
     restart_game(&game);
     parse_fen_engine(&game, "r6r/1b2k1bq/8/8/7B/8/8/R3K2R b KQ - 3 2");
     // 65535d

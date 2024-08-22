@@ -81,7 +81,7 @@ static void parse_fen(char *fen, U64 *bitboards, int *side, int *enpassant, int 
             }
         }
         i++;
-        *enpassant = (fen[i] != '-') ? ((fen[i] - 'a') + 8 * (fen[i+1] - '1')) : NO_SQ;
+        *enpassant = (fen[i] != '-') ? ((fen[i] - 'a') + 8 * (8 - (fen[i+1] - '0'))) : NO_SQ;
         i += (fen[i] != '-') ? 3 : 2;
         *half = (int)fen[i++] - 48;
         *full = (int)fen[++i] - 48;

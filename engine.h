@@ -61,10 +61,7 @@ struct Move{
 
 /*Macros for copying and restoring the game state*/
 #define COPY_GAME() \
-memcpy(&game_copy, &game, sizeof(Game)); \
-
-#define RESTORE_GAME() \
-memcpy(&game, &game_copy, sizeof(Game)); \
+memcpy
 
 
 /*Enum for chess squares*/
@@ -212,11 +209,10 @@ static inline void handle_en_passant(Game* game, int piece);
 inline static void handle_pawn_moves(Game* game, int source_sq, int direction, int startRow, int promoRow, U64 enemyPieces);
 inline static void print_move(const char* from, const char* to);
 inline static void print_capture(const char* from, const char* to);
-extern inline void generate_moves(Game *game); // change to static after debugging
-extern inline void add_move(Move *MoveList, int move);  // change to static after debugging
+extern inline void GenerateMoves(Game *game); // change to static after debugging
+extern inline void addMove(Move *MoveList, int move);  // change to static after debugging
 void printMove(int move);
 void printMoveList(Move *MoveList);
-extern inline int make_move(Game *game, Game *game_copy, int move); // change to static after debugging
 extern const char* CTSM[64];
 extern Game game_copy;
 U64 lookup_table[87988];

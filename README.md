@@ -6,9 +6,7 @@ It is my first big project in C. I will learn basics of chess computing and poli
 
 
 # Notes for the future me
-- Further optimize generate_queen moves by actually writing the code than calling two functions and  
-- make the functions inline after  
-- might be a problem at encoding the moves promotion part and make_move function uses it
+- Further optimize generate_queen moves by actually writing the code than calling two functions and make the functions inline after  
 
 
 # Updates from the last time

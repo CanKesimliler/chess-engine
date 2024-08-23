@@ -13,6 +13,8 @@ U64 lookup_table[87988];
 MagicTable RookBlackMagic[64];
 MagicTable BishopBlackMagic[64];
 
+Game game, game_copy;
+
 Move MoveList = { {0}, 0 };
 
 /*Index to square map*/
@@ -709,7 +711,7 @@ static inline U64 rook_attack(int square, U64 blockBB){
  * @param blockBB The blocking bitboard representing occupied squares.
  * @return The bishop attack bitboard.
  */
-  static inline U64 bishop_attack(int square, U64 blockBB) {
+static inline U64 bishop_attack(int square, U64 blockBB) {
     int magic_index = (int)(((blockBB | BishopMagicTable[square].blackmask) * BishopMagicTable[square].magic) >> (64 - 9));
     return lookup_table[BishopMagicTable[square].index + magic_index];
 }
@@ -721,34 +723,34 @@ static inline U64 queen_attack(int square, U64 blockBB){
 }
 
 
-void restart_game(Game* game){
+void restart_game(){
     
     /*Restarting the state flags of the game*/
-    game->side = WHITE_P;
-    game->enpassant = NO_SQ;
-    game->castle = 0b1111;
-    game->half_moves = 0;
-    game->full_moves = 0;
+    game.side = WHITE_P;
+    game.enpassant = NO_SQ;
+    game.castle = 0b1111;
+    game.half_moves = 0;
+    game.full_moves = 0;
     
     /*Restarting the bitboards*/
-    game->bitboards[wP] = 0x00FF000000000000;
-    game->bitboards[wN] = 0x4200000000000000;
-    game->bitboards[wB] = 0x2400000000000000;
-    game->bitboards[wR] = 0x8100000000000000;
-    game->bitboards[wQ] = 0x0800000000000000;
-    game->bitboards[wK] = 0x1000000000000000;
+    game.bitboards[wP] = 0x00FF000000000000;
+    game.bitboards[wN] = 0x4200000000000000;
+    game.bitboards[wB] = 0x2400000000000000;
+    game.bitboards[wR] = 0x8100000000000000;
+    game.bitboards[wQ] = 0x0800000000000000;
+    game.bitboards[wK] = 0x1000000000000000;
     
-    game->bitboards[bP] = 0x000000000000FF00;
-    game->bitboards[bN] = 0x0000000000000042;
-    game->bitboards[bB] = 0x0000000000000024;
-    game->bitboards[bR] = 0x0000000000000081;
-    game->bitboards[bQ] = 0x0000000000000008;
-    game->bitboards[bK] = 0x0000000000000010;
+    game.bitboards[bP] = 0x000000000000FF00;
+    game.bitboards[bN] = 0x0000000000000042;
+    game.bitboards[bB] = 0x0000000000000024;
+    game.bitboards[bR] = 0x0000000000000081;
+    game.bitboards[bQ] = 0x0000000000000008;
+    game.bitboards[bK] = 0x0000000000000010;
 
-    game->bitboards[wA] = 18446462598732840960ULL;
-    game->bitboards[bA] = 65535ULL;
+    game.bitboards[wA] = 18446462598732840960ULL;
+    game.bitboards[bA] = 65535ULL;
 
-    game->bitboards[AP] = 18446462598732906495ULL;
+    game.bitboards[AP] = 18446462598732906495ULL;
     
 }
 
@@ -800,36 +802,6 @@ static inline U64 squares_attacked(int side, U64 bitboards[]){
     return attacks;
 }
 
-// Inline helper functions
-
-/**
- * Prints a regular move from one square to another.
- * @param from The starting square.
- * @param to The target square.
- */
-inline static void print_move(const char* from, const char* to) {
-    printf("%s%s\n", from, to);
-}
-
-/**
- * Prints a capture move from one square to another.
- * @param from The starting square.
- * @param to The target square.
- */
-inline static void print_capture(const char* from, const char* to) {
-    printf("%sx%s\n", from, to);
-}
-
-/**
- * Prints a promotion move from one square to another with a specified promotion piece.
- * @param from The starting square.
- * @param to The target square.
- * @param promotion The promotion piece.
- */
-inline static void print_promotion(const char* from, const char* to, char promotion) {
-    printf("%s%s%c\n", from, to, promotion);
-}
-
 /**
  * Handles pawn moves for a given game state.
  * @param game The game state.
@@ -837,15 +809,14 @@ inline static void print_promotion(const char* from, const char* to, char promot
  * @param direction The direction of the pawn's movement.
  * @param startRow The starting row of the pawns.
  * @param promoRow The promotion row of the pawns.
- * @param enemyPieces The bitboard representing the enemy pieces.
  */
-inline static void handle_pawn_moves(Game* game, int source_sq, int direction, int startRow, int promoRow, U64 enemyPieces) {
+inline static void handle_pawn_moves(int source_sq, int direction, int startRow, int promoRow) {
     int target_sq = source_sq + direction;
     int bias = (int)((float)startRow*(-3/(float)20)+7.3);
     // Single pawn push
-    if (!GET_BIT(game->bitboards[AP], target_sq)) {
+    if (!GET_BIT(game.bitboards[AP], target_sq)) {
         // Double pawn push
-        if ((startRow <= source_sq && source_sq <= startRow + 7) && !GET_BIT(game->bitboards[AP], target_sq + direction)) {
+        if ((startRow <= source_sq && source_sq <= startRow + 7) && !GET_BIT(game.bitboards[AP], target_sq + direction)) {
             addMove(&MoveList, ENCODE_MOVE(source_sq, (target_sq + direction), (wP+bias), 0, 0, 1, 0, 0));
         }
         // Promotion
@@ -860,7 +831,7 @@ inline static void handle_pawn_moves(Game* game, int source_sq, int direction, i
     }
 
     // Pawn captures
-    U64 attacks = pawn_attack_table[game->side][source_sq] & game->bitboards[enemyPieces];
+    U64 attacks = pawn_attack_table[game.side][source_sq] & game.bitboards[bA+(game.side)];
     while (attacks) {
         target_sq = get_first_1bit(attacks);
         if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
@@ -880,12 +851,12 @@ inline static void handle_pawn_moves(Game* game, int source_sq, int direction, i
  * @param game The game state.
  * @param piece The piece type.
  */
-inline static void handle_en_passant(Game* game, int piece) {
-    if ((game->enpassant) != NO_SQ) {
-        U64 attacks = pawn_attack_table[(game->side == WHITE_P) ? BLACK_P : WHITE_P][game->enpassant] & game->bitboards[piece];
+inline static void handle_en_passant(int piece) {
+    if ((game.enpassant) != NO_SQ) {
+        U64 attacks = pawn_attack_table[(game.side == WHITE_P) ? BLACK_P : WHITE_P][game.enpassant] & game.bitboards[piece];
         while (attacks) {
             int source_sq = get_first_1bit(attacks);
-            addMove(&MoveList, ENCODE_MOVE(source_sq, game->enpassant, piece, 0, 1, 0, 1, 0));
+            addMove(&MoveList, ENCODE_MOVE(source_sq, game.enpassant, piece, 0, 1, 0, 1, 0));
             REMOVE_BIT(attacks, source_sq);
         }
     }
@@ -895,26 +866,26 @@ inline static void handle_en_passant(Game* game, int piece) {
  * Handles castling moves for a given game state.
  * @param game The game state.
  */
-inline static void handle_castling(Game* game) {
-    if (game->side == WHITE_P) {
-        if ((game->castle & WKC) && !GET_BIT(game->bitboards[AP], F1) && !GET_BIT(game->bitboards[AP], G1)) {
-            if (!is_square_attacked(E1, BLACK_P, game->bitboards) && !is_square_attacked(F1, BLACK_P, game->bitboards) && !is_square_attacked(G1, BLACK_P, game->bitboards)) {
+inline static void handle_castling() {
+    if (game.side == WHITE_P) {
+        if ((game.castle & WKC) && !GET_BIT(game.bitboards[AP], F1) && !GET_BIT(game.bitboards[AP], G1)) {
+            if (!is_square_attacked(E1, BLACK_P, game.bitboards) && !is_square_attacked(F1, BLACK_P, game.bitboards) && !is_square_attacked(G1, BLACK_P, game.bitboards)) {
                 addMove(&MoveList, ENCODE_MOVE(E1, G1, wK, 0, 0, 0, 0, 1));
             }
         }
-        if ((game->castle & WQC) && !GET_BIT(game->bitboards[AP], D1) && !GET_BIT(game->bitboards[AP], C1) && !GET_BIT(game->bitboards[AP], B1)) {
-            if (!is_square_attacked(E1, BLACK_P, game->bitboards) && !is_square_attacked(D1, BLACK_P, game->bitboards) && !is_square_attacked(C1, BLACK_P, game->bitboards)) {
+        if ((game.castle & WQC) && !GET_BIT(game.bitboards[AP], D1) && !GET_BIT(game.bitboards[AP], C1) && !GET_BIT(game.bitboards[AP], B1)) {
+            if (!is_square_attacked(E1, BLACK_P, game.bitboards) && !is_square_attacked(D1, BLACK_P, game.bitboards) && !is_square_attacked(C1, BLACK_P, game.bitboards)) {
                 addMove(&MoveList, ENCODE_MOVE(E1, C1, wK, 0, 0, 0, 0, 1));
             }
         }
     } else {
-        if ((game->castle & BKC) && !GET_BIT(game->bitboards[AP], F8) && !GET_BIT(game->bitboards[AP], G8)) {
-            if (!is_square_attacked(E8, WHITE_P, game->bitboards) && !is_square_attacked(F8, WHITE_P, game->bitboards) && !is_square_attacked(G8, WHITE_P, game->bitboards)) {
+        if ((game.castle & BKC) && !GET_BIT(game.bitboards[AP], F8) && !GET_BIT(game.bitboards[AP], G8)) {
+            if (!is_square_attacked(E8, WHITE_P, game.bitboards) && !is_square_attacked(F8, WHITE_P, game.bitboards) && !is_square_attacked(G8, WHITE_P, game.bitboards)) {
                 addMove(&MoveList, ENCODE_MOVE(E8, G8, bK, 0, 0, 0, 0, 1));
             }
         }
-        if ((game->castle & BQC) && !GET_BIT(game->bitboards[AP], D8) && !GET_BIT(game->bitboards[AP], C8) && !GET_BIT(game->bitboards[AP], B8)) {
-            if (!is_square_attacked(E8, WHITE_P, game->bitboards) && !is_square_attacked(D8, WHITE_P, game->bitboards) && !is_square_attacked(C8, WHITE_P, game->bitboards)) {
+        if ((game.castle & BQC) && !GET_BIT(game.bitboards[AP], D8) && !GET_BIT(game.bitboards[AP], C8) && !GET_BIT(game.bitboards[AP], B8)) {
+            if (!is_square_attacked(E8, WHITE_P, game.bitboards) && !is_square_attacked(D8, WHITE_P, game.bitboards) && !is_square_attacked(C8, WHITE_P, game.bitboards)) {
                 addMove(&MoveList, ENCODE_MOVE(E8, C8, bK, 0, 0, 0, 0, 1));
             }
         }
@@ -926,55 +897,55 @@ inline static void handle_castling(Game* game) {
  * Generates all possible moves for a given game state.
  * @param game The game state.
  */
-inline void GenerateMoves(Game* game) {
+inline void GenerateMoves() {
     int source_sq, target_sq;
     int move = 0;
     U64 attacks = 0UL;
     U64 temp_bb;
-    int direction = (game->side == WHITE_P) ? -8 : 8;
-    int startRow = (game->side == WHITE_P) ? A2 : A7;
-    int promoRow = (game->side == WHITE_P) ? A7 : A2;
-    int enemyPieces = (game->side == WHITE_P) ? bA : wA;
-    int friendlyPieces = (game->side == WHITE_P) ? wA : bA;
-    int start_piece = (game->side == WHITE_P) ? wP : bP;
-    int end_piece = (game->side == WHITE_P) ? wK : bK;
+    int direction = (game.side == WHITE_P) ? -8 : 8;
+    int startRow = (game.side == WHITE_P) ? A2 : A7;
+    int promoRow = (game.side == WHITE_P) ? A7 : A2;
+    int enemyPieces = (game.side == WHITE_P) ? bA : wA;
+    int friendlyPieces = (game.side == WHITE_P) ? wA : bA;
+    int start_piece = (game.side == WHITE_P) ? wP : bP;
+    int end_piece = (game.side == WHITE_P) ? wK : bK;
 
     // Iterate through each piece type
     for (int piece = start_piece; piece <= end_piece; piece++) {
-        temp_bb = game->bitboards[piece];
+        temp_bb = game.bitboards[piece];
 
         // Iterate through each square with the current piece
         while ((source_sq = get_first_1bit(temp_bb)) != NO_SQ) {
             switch (piece) {
                 case wP:
                 case bP:
-                    handle_pawn_moves(game, source_sq, direction, startRow, promoRow, enemyPieces);
+                    handle_pawn_moves(source_sq, direction, startRow, promoRow);
                     break;
 
                 case wN:
                 case bN:
-                    attacks = knight_attack_table[source_sq] & ~game->bitboards[game->side];
+                    attacks = knight_attack_table[source_sq] & ~game.bitboards[game.side];
                     break;
 
                 case wB:
                 case bB:
-                    attacks = bishop_attack(source_sq, game->bitboards[AP]) & ~game->bitboards[game->side];
+                    attacks = bishop_attack(source_sq, game.bitboards[AP]) & ~game.bitboards[game.side];
                     break;
 
                 case wR:
                 case bR:
-                    attacks = rook_attack(source_sq, game->bitboards[AP]) & ~game->bitboards[game->side];
+                    attacks = rook_attack(source_sq, game.bitboards[AP]) & ~game.bitboards[game.side];
                     break;
 
                 case wQ:
                 case bQ:
-                    attacks = queen_attack(source_sq, game->bitboards[AP]) & ~game->bitboards[game->side];
+                    attacks = queen_attack(source_sq, game.bitboards[AP]) & ~game.bitboards[game.side];
                     break;
 
                 case wK:
                 case bK:
-                    attacks = king_attack_table[source_sq] & ~game->bitboards[game->side];
-                    handle_castling(game);
+                    attacks = king_attack_table[source_sq] & ~game.bitboards[game.side];
+                    handle_castling();
                     break;
 
                 default:
@@ -984,9 +955,9 @@ inline void GenerateMoves(Game* game) {
             // Iterate through each target square and print the move
             while (attacks) {
                 target_sq = get_first_1bit(attacks);
-                if (GET_BIT(game->bitboards[enemyPieces], target_sq)) {
+                if (GET_BIT(game.bitboards[enemyPieces], target_sq)) {
                     addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 1, 0, 0, 0));
-                } else if(!GET_BIT(game->bitboards[friendlyPieces], target_sq)){
+                } else if(!GET_BIT(game.bitboards[friendlyPieces], target_sq)){
                     addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 0, 0, 0, 0));
                 }
                 REMOVE_BIT(attacks, target_sq);
@@ -994,7 +965,7 @@ inline void GenerateMoves(Game* game) {
 
             // Handle en passant captures
             if (piece == wP || piece == bP) {
-                handle_en_passant(game, piece);
+                handle_en_passant(piece);
             }
 
             REMOVE_BIT(temp_bb, source_sq);
@@ -1052,4 +1023,116 @@ void printMoveList(Move *MoveList){
         GET_CASTLE_FLAG(MoveList->moves[index]));
     }
     printf("\nTotal number of moves: %d\n", MoveList->moveCount);
+}
+
+// castling rights update constants
+const int castling_rights[64] = {
+     7, 15, 15, 15,  3, 15, 15, 11,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    15, 15, 15, 15, 15, 15, 15, 15,
+    13, 15, 15, 15, 12, 15, 15, 14
+};
+
+inline int make_move(int move){
+
+    /*Decode the move*/
+    int source_sq = GET_SOURCE_SQUARE(move);
+    int target_sq = GET_TARGET_SQUARE(move);
+    int piece = GET_PIECE(move);
+    int promoted_piece = GET_PROMOTED_PIECE(move);
+    int capture = GET_CAPTURE_FLAG(move);
+    int double_pp = GET_DOUBLE_PP_FLAG(move);
+    int enpassant = GET_ENPASSANT_FLAG(move);
+    int castling = GET_CASTLE_FLAG(move);
+
+    /*Copy the game state*/
+    memcpy(&game_copy, &game, sizeof(Game));
+
+    /*Move the piece*/
+    REMOVE_BIT(game.bitboards[piece], source_sq);
+    SET_BIT(game.bitboards[piece], target_sq);
+
+    /*Handle the capture*/
+    if(capture && !enpassant){
+        int enemy_piece;
+        if(game.side == WHITE_P){
+            enemy_piece = bP;}
+        else{
+            enemy_piece = wP;
+        }
+        /*Find the enemy piece*/
+        while(!GET_BIT(game.bitboards[enemy_piece], target_sq)){
+            enemy_piece++;
+        }
+        /*Remove the enemy piece*/
+        REMOVE_BIT(game.bitboards[enemy_piece], target_sq);
+    }
+
+    /*Handle the promotion*/
+    if(promoted_piece){
+        /*Remove the pawn that moved from earlier*/
+        REMOVE_BIT(game.bitboards[piece], target_sq);
+        /*Add the promoted piece*/
+        SET_BIT(game.bitboards[promoted_piece], target_sq);
+    }
+
+    /*Handle the enpassant*/
+    if(enpassant){
+        printf("Target square: %d\n", target_sq);
+        /*remove the captured pawn depending on side*/
+        if (game.side == WHITE_P) {
+            REMOVE_BIT(game.bitboards[bP], target_sq + 8);
+        } else {
+            REMOVE_BIT(game.bitboards[wP], target_sq - 8);
+        }
+    }
+
+    /*Handle double pawn push*/
+    if(double_pp){
+        game.enpassant = (game.side == WHITE_P) ? target_sq - 8 : target_sq + 8;
+    }
+
+    /*Handle castling*/
+    if(enpassant){
+        switch (target_sq)
+        {
+        /*White castles king side*/
+        case G1:
+            /*Remove the rook from H1*/
+            REMOVE_BIT(game.bitboards[wR], H1);
+            /*Place the rook to the F1*/
+            SET_BIT(game.bitboards[wR], F1);
+            break;
+        /*White castles queen side*/
+        case C1:
+            /*Remove the rook from A1*/
+            REMOVE_BIT(game.bitboards[wR], A1);
+            /*Place the rook to the D1*/
+            SET_BIT(game.bitboards[wR], D1);
+            break;
+        /*Black castles king side*/
+        case G8:
+            /*Remove the rook from H8*/
+            REMOVE_BIT(game.bitboards[bR], H8);
+            /*Place the rook to the F8*/
+            SET_BIT(game.bitboards[bR], F8);
+            break;
+        /*Black castles queen side*/
+        case C8:
+            /*Remove the rook from A8*/
+            REMOVE_BIT(game.bitboards[bR], A8);
+            /*Place the rook to the D8*/
+            SET_BIT(game.bitboards[bR], D8);
+            break;
+        default:
+            puts("Invalid castling move");
+            break;
+        }
+    }
+    /*Updating castling rights*/
+    game.castle &= castling_rights[source_sq];
 }

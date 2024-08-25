@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = 
+CFLAGS = -Ofast
 
 TARGET = main
 

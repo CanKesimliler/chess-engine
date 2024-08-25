@@ -193,7 +193,7 @@ U64 knight_attacks(int square);
 U64 king_attacks(int square);
 static inline U64 mask_rook_attacks(int square);
 static inline U64 mask_bishop_attacks(int square);
-static inline  U64 generate_rook_attacks(int square, U64 blockBB);
+static inline U64 generate_rook_attacks(int square, U64 blockBB);
 static inline U64 generate_bishop_attacks(int square, U64 blockBB);
 void print_bitboard(U64 bitboard);
 void init_pieces_attacks();
@@ -206,15 +206,15 @@ void init_slider_attacks();
 int is_occupied(U64 bitboard, int square);
 static U64 find_magic_number(int square, int relevant_bits, int piece);
 void restart_game();
-extern inline int is_square_attacked(int square, int side, U64 bitboards[]); // change to static after debugging
+static inline int is_square_attacked(int square, int side, U64 bitboards[]); // change to static after debugging
 U64 squares_attacked(int side, U64 bitboards[]); // static inline after debugging
 static inline void handle_castling(Move *MoveList);
 static inline void handle_en_passant(Move *MoveList);
 
 inline static void handle_pawn_moves(Move *MoveList, int source_sq, int direction, int startRow, int promoRow);
 
-extern inline void GenerateMoves(Move *MoveList); // change to static after debugging
-extern inline void addMove(Move *MoveList, int move);  // change to static after debugging
+static inline void generate_moves(Move *MoveList); // change to static after debugging
+static inline void add_move(Move *MoveList, int move);  // change to static after debugging
 void printMove(int move);
 void printMoveList(Move *MoveList);
 int make_move(int move); // change to static after debugging
@@ -223,7 +223,6 @@ int get_time_ms();
 void legal_moves(Move *MoveList);
 void print_board();
 
-extern U64 king_attack_table[64];
 extern Game game;
 
 extern const char* CTSM[64];

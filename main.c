@@ -6,7 +6,7 @@
 
 int main(void){
     restart_game();
-    parse_fen_engine(&game, "n1n5/1Pk5/8/8/8/8/5Kp1/5N1N w - - 0 1");
+    parse_fen_engine(&game, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
     // 65535d
     //18446462598732840960d
     init_pieces_attacks();
@@ -16,11 +16,13 @@ int main(void){
     int start = get_time_ms();
 
     //perft
-    perft_driver(2);
-
-    Move moves = {{0}, 0};
+    perft_driver(5);
+    //print_bitboard(22518006777118720);
+    //print_board();
+    //Move moves = {{0}, 0};
     //GenerateMoves(&moves);
     //printMoveList(&moves);
+    //print_bitboard(queen_attack(A3, game.bitboards[AP]));
 
 
 

@@ -61,10 +61,11 @@ struct Move{
 
 /*Macros for copying and restoring the game state*/
 #define COPY_GAME() \
-memcpy(&game_copy, &game, sizeof(Game));
+Game game_copy; \
+memcpy(&game_copy, &game, sizeof(Game)); 
 
 #define RESTORE_GAME() \
-memcpy(&game, &game_copy, sizeof(Game));
+memcpy(&game, &game_copy, sizeof(Game)); 
 
 
 /*Enum for chess squares*/
@@ -91,6 +92,7 @@ enum ChessPiece {
 enum CastleRights {
     WKC = 8, WQC = 4, BKC = 2, BQC = 1
 };
+// 1111
 
 
 /*Not A file*/
@@ -141,7 +143,7 @@ Bitboard: 18374403900871474942d*/
 Bitboard: 9187201950435737471d*/
 
 /*Not AB file*/
-#define NOT_AB_FILE 15923880545981627644UL
+#define NOT_AB_FILE 18229723555195321596ULL
 
 /*  A B C D E F G H
    -----------------
@@ -159,7 +161,7 @@ Bitboard: 9187201950435737471d*/
    -----------------
 2- |0|0|1|1|1|1|1|1|
    -----------------
-1- |0|0|1|1|1|0|1|1|
+1- |0|0|1|1|1|1|1|1|
    -----------------
 Bitboard: 15923880545981627644d*/
 
@@ -204,26 +206,28 @@ void init_slider_attacks();
 int is_occupied(U64 bitboard, int square);
 static U64 find_magic_number(int square, int relevant_bits, int piece);
 void restart_game();
-static inline int is_square_attacked(int square, int side, U64 bitboards[]);
-static inline U64 squares_attacked(int side, U64 bitboards[]);
-static inline void handle_castling();
-static inline void handle_en_passant(int piece);
+extern inline int is_square_attacked(int square, int side, U64 bitboards[]); // change to static after debugging
+U64 squares_attacked(int side, U64 bitboards[]); // static inline after debugging
+static inline void handle_castling(Move *MoveList);
+static inline void handle_en_passant(Move *MoveList);
 
-inline static void handle_pawn_moves(int source_sq, int direction, int startRow, int promoRow);
+inline static void handle_pawn_moves(Move *MoveList, int source_sq, int direction, int startRow, int promoRow);
 
-extern inline void GenerateMoves(); // change to static after debugging
+extern inline void GenerateMoves(Move *MoveList); // change to static after debugging
 extern inline void addMove(Move *MoveList, int move);  // change to static after debugging
 void printMove(int move);
 void printMoveList(Move *MoveList);
-extern inline int make_move(int move); // change to static after debugging
+int make_move(int move); // change to static after debugging
+void perft_driver(int depth); // change to static after debugging
+int get_time_ms();
+void legal_moves(Move *MoveList);
+void print_board();
 
+extern U64 king_attack_table[64];
 extern Game game;
-extern Game game_copy;
 
 extern const char* CTSM[64];
-extern Game game_copy;
-U64 lookup_table[87988];
-extern Move MoveList;
+extern long nodes;
 
 
 

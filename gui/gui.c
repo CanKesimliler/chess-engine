@@ -75,7 +75,7 @@ int main() {
 
     /*Now that the textures are loaded we intialize the board*/
     InitBoard(&board);
-    parse_fen_gui(&board, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ");
+    parse_fen_gui(&board, "r3k2r/8/8/8/8/8/8/4K3 w kq - 0 1 ");
     //2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18
     InitPieces(&board);
 

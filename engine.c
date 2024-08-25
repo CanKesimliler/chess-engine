@@ -1,5 +1,11 @@
+// system headers
 #include "engine.h"
 #include <string.h>
+#ifdef WIN64
+    #include <windows.h>
+#else
+    # include <sys/time.h>
+#endif
 
 U64 pawn_attack_table[2][64];
 U64 knight_attack_table[64];
@@ -13,9 +19,7 @@ U64 lookup_table[87988];
 MagicTable RookBlackMagic[64];
 MagicTable BishopBlackMagic[64];
 
-Game game, game_copy;
-
-Move MoveList = { {0}, 0 };
+Game game;
 
 /*Index to square map*/
 const char* CTSM[64] = {
@@ -69,14 +73,14 @@ const int bishop_rel_bits[64] = {
 };
 
 const int rook_rel_bits[64] = {
-        12, 11, 11, 11, 11, 11, 11, 12,
-        11, 10, 10, 10, 10, 10, 10, 11,
-        11, 10, 10, 10, 10, 10, 10, 11,
-        11, 10, 10, 10, 10, 10, 10, 11,
-        11, 10, 10, 10, 10, 10, 10, 11,
-        11, 10, 10, 10, 10, 10, 10, 11,
-        11, 10, 10, 10, 10, 10, 10, 11,
-        12, 11, 11, 11, 11, 11, 11, 12
+    12, 11, 11, 11, 11, 11, 11, 12,
+    11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11,
+    11, 10, 10, 10, 10, 10, 10, 11,
+    12, 11, 11, 11, 11, 11, 11, 12
     };
 
 static MagicTable BishopMagicTable[64] = {
@@ -257,28 +261,26 @@ U64 pawn_attacks(int square, int color)
 
 U64 knight_attacks(int square)
 {
+    // result attacks bitboard
+    U64 attacks = 0ULL;
 
-    /*Result attack bitboards*/
-    U64 attacks = 0UL;
+    // piece bitboard
+    U64 bitboard = 0ULL;
+    
+    // set piece on board
+    SET_BIT(bitboard, square);
+    
+    // generate knight attacks
+    if ((bitboard >> 17) & NOT_H_FILE) attacks |= (bitboard >> 17);
+    if ((bitboard >> 15) & NOT_A_FILE) attacks |= (bitboard >> 15);
+    if ((bitboard >> 10) & NOT_GH_FILE) attacks |= (bitboard >> 10);
+    if ((bitboard >> 6) & NOT_AB_FILE) attacks |= (bitboard >> 6);
+    if ((bitboard << 17) & NOT_A_FILE) attacks |= (bitboard << 17);
+    if ((bitboard << 15) & NOT_H_FILE) attacks |= (bitboard << 15);
+    if ((bitboard << 10) & NOT_AB_FILE) attacks |= (bitboard << 10);
+    if ((bitboard << 6) & NOT_GH_FILE) attacks |= (bitboard << 6);
 
-    /*Generate knight attacks 17 15 10 6*/
-    if ((SET_BIT_NUM(0UL, square) >> 17 & NOT_H_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) >> 17);
-    if ((SET_BIT_NUM(0UL, square) >> 15 & NOT_A_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) >> 15);
-    if ((SET_BIT_NUM(0UL, square) >> 10 & NOT_GH_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) >> 10);
-    if ((SET_BIT_NUM(0UL, square) >> 6 & NOT_AB_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) >> 6);
-    if ((SET_BIT_NUM(0UL, square) << 17 & NOT_H_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) << 17);
-    if ((SET_BIT_NUM(0UL, square) << 15 & NOT_A_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) << 15);
-    if ((SET_BIT_NUM(0UL, square) << 10 & NOT_AB_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) << 10);
-    if ((SET_BIT_NUM(0UL, square) << 6 & NOT_GH_FILE))
-        attacks |= (SET_BIT_NUM(0UL, square) << 6);
-
+    // return attack map
     return attacks;
 }
 
@@ -760,7 +762,7 @@ void restart_game(){
 /*                                                */
 /*================================================*/
 
-static inline int is_square_attacked(int square, int side, U64 bitboards[]){
+ inline int is_square_attacked(int square, int side, U64 bitboards[]){
     /*Keeping track of the state*/
     U64 is_attacked = 0;
 
@@ -791,7 +793,7 @@ static inline int is_square_attacked(int square, int side, U64 bitboards[]){
     return is_attacked;
 }
 
-static inline U64 squares_attacked(int side, U64 bitboards[]){
+ U64 squares_attacked(int side, U64 bitboards[]){
     U64 attacks = 0UL;
     int square = 0;
     for(; square < 64; square++){
@@ -810,23 +812,23 @@ static inline U64 squares_attacked(int side, U64 bitboards[]){
  * @param startRow The starting row of the pawns.
  * @param promoRow The promotion row of the pawns.
  */
-inline static void handle_pawn_moves(int source_sq, int direction, int startRow, int promoRow) {
+inline static void handle_pawn_moves(Move *MoveList, int source_sq, int direction, int startRow, int promoRow) {
     int target_sq = source_sq + direction;
     int bias = (int)((float)startRow*(-3/(float)20)+7.3);
     // Single pawn push
     if (!GET_BIT(game.bitboards[AP], target_sq)) {
         // Double pawn push
         if ((startRow <= source_sq && source_sq <= startRow + 7) && !GET_BIT(game.bitboards[AP], target_sq + direction)) {
-            addMove(&MoveList, ENCODE_MOVE(source_sq, (target_sq + direction), (wP+bias), 0, 0, 1, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, (target_sq + direction), (wP+bias), 0, 0, 1, 0, 0));
         }
         // Promotion
         if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wQ+bias), 0, 0, 0, 0));
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wR+bias), 0, 0, 0, 0));
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wN+bias), 0, 0, 0, 0));
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wB+bias), 0, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wQ+bias), 0, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wR+bias), 0, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wN+bias), 0, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wB+bias), 0, 0, 0, 0));
         } else {
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), 0, 0, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), 0, 0, 0, 0, 0));
         }
     }
 
@@ -835,12 +837,12 @@ inline static void handle_pawn_moves(int source_sq, int direction, int startRow,
     while (attacks) {
         target_sq = get_first_1bit(attacks);
         if ((promoRow <= source_sq && source_sq <= promoRow + 7)) {
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wQ+bias), 1, 0, 0, 0));
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wR+bias), 1, 0, 0, 0));
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wN+bias), 1, 0, 0, 0));
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wB+bias), 1, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wQ+bias), 1, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wR+bias), 1, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wN+bias), 1, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), (wB+bias), 1, 0, 0, 0));
         } else {
-            addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), 0, 1, 0, 0, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, (wP+bias), 0, 1, 0, 0, 0));
         }
         REMOVE_BIT(attacks, target_sq);
     }
@@ -851,12 +853,12 @@ inline static void handle_pawn_moves(int source_sq, int direction, int startRow,
  * @param game The game state.
  * @param piece The piece type.
  */
-inline static void handle_en_passant(int piece) {
+inline static void handle_en_passant(Move *MoveList) {
     if ((game.enpassant) != NO_SQ) {
-        U64 attacks = pawn_attack_table[(game.side == WHITE_P) ? BLACK_P : WHITE_P][game.enpassant] & game.bitboards[piece];
+        U64 attacks = pawn_attack_table[(game.side == WHITE_P) ? BLACK_P : WHITE_P][game.enpassant] & game.bitboards[wP+(6*game.side)];
         while (attacks) {
             int source_sq = get_first_1bit(attacks);
-            addMove(&MoveList, ENCODE_MOVE(source_sq, game.enpassant, piece, 0, 1, 0, 1, 0));
+            addMove(MoveList, ENCODE_MOVE(source_sq, game.enpassant, (wP+(6*game.side)), 0, 1, 0, 1, 0));
             REMOVE_BIT(attacks, source_sq);
         }
     }
@@ -866,27 +868,27 @@ inline static void handle_en_passant(int piece) {
  * Handles castling moves for a given game state.
  * @param game The game state.
  */
-inline static void handle_castling() {
+inline static void handle_castling(Move *MoveList) {
     if (game.side == WHITE_P) {
         if ((game.castle & WKC) && !GET_BIT(game.bitboards[AP], F1) && !GET_BIT(game.bitboards[AP], G1)) {
             if (!is_square_attacked(E1, BLACK_P, game.bitboards) && !is_square_attacked(F1, BLACK_P, game.bitboards) && !is_square_attacked(G1, BLACK_P, game.bitboards)) {
-                addMove(&MoveList, ENCODE_MOVE(E1, G1, wK, 0, 0, 0, 0, 1));
+                addMove(MoveList, ENCODE_MOVE(E1, G1, wK, 0, 0, 0, 0, 1));
             }
         }
         if ((game.castle & WQC) && !GET_BIT(game.bitboards[AP], D1) && !GET_BIT(game.bitboards[AP], C1) && !GET_BIT(game.bitboards[AP], B1)) {
             if (!is_square_attacked(E1, BLACK_P, game.bitboards) && !is_square_attacked(D1, BLACK_P, game.bitboards) && !is_square_attacked(C1, BLACK_P, game.bitboards)) {
-                addMove(&MoveList, ENCODE_MOVE(E1, C1, wK, 0, 0, 0, 0, 1));
+                addMove(MoveList, ENCODE_MOVE(E1, C1, wK, 0, 0, 0, 0, 1));
             }
         }
     } else {
         if ((game.castle & BKC) && !GET_BIT(game.bitboards[AP], F8) && !GET_BIT(game.bitboards[AP], G8)) {
             if (!is_square_attacked(E8, WHITE_P, game.bitboards) && !is_square_attacked(F8, WHITE_P, game.bitboards) && !is_square_attacked(G8, WHITE_P, game.bitboards)) {
-                addMove(&MoveList, ENCODE_MOVE(E8, G8, bK, 0, 0, 0, 0, 1));
+                addMove(MoveList, ENCODE_MOVE(E8, G8, bK, 0, 0, 0, 0, 1));
             }
         }
         if ((game.castle & BQC) && !GET_BIT(game.bitboards[AP], D8) && !GET_BIT(game.bitboards[AP], C8) && !GET_BIT(game.bitboards[AP], B8)) {
             if (!is_square_attacked(E8, WHITE_P, game.bitboards) && !is_square_attacked(D8, WHITE_P, game.bitboards) && !is_square_attacked(C8, WHITE_P, game.bitboards)) {
-                addMove(&MoveList, ENCODE_MOVE(E8, C8, bK, 0, 0, 0, 0, 1));
+                addMove(MoveList, ENCODE_MOVE(E8, C8, bK, 0, 0, 0, 0, 1));
             }
         }
     }
@@ -897,7 +899,7 @@ inline static void handle_castling() {
  * Generates all possible moves for a given game state.
  * @param game The game state.
  */
-inline void GenerateMoves() {
+inline void GenerateMoves(Move *MoveList) {
     int source_sq, target_sq;
     int move = 0;
     U64 attacks = 0UL;
@@ -919,7 +921,7 @@ inline void GenerateMoves() {
             switch (piece) {
                 case wP:
                 case bP:
-                    handle_pawn_moves(source_sq, direction, startRow, promoRow);
+                    handle_pawn_moves(MoveList, source_sq, direction, startRow, promoRow);
                     break;
 
                 case wN:
@@ -945,7 +947,7 @@ inline void GenerateMoves() {
                 case wK:
                 case bK:
                     attacks = king_attack_table[source_sq] & ~game.bitboards[game.side];
-                    handle_castling();
+                    handle_castling(MoveList);
                     break;
 
                 default:
@@ -956,21 +958,19 @@ inline void GenerateMoves() {
             while (attacks) {
                 target_sq = get_first_1bit(attacks);
                 if (GET_BIT(game.bitboards[enemyPieces], target_sq)) {
-                    addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 1, 0, 0, 0));
+                    addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 1, 0, 0, 0));
                 } else if(!GET_BIT(game.bitboards[friendlyPieces], target_sq)){
-                    addMove(&MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 0, 0, 0, 0));
+                    addMove(MoveList, ENCODE_MOVE(source_sq, target_sq, piece, 0, 0, 0, 0, 0));
                 }
                 REMOVE_BIT(attacks, target_sq);
             }
 
-            // Handle en passant captures
-            if (piece == wP || piece == bP) {
-                handle_en_passant(piece);
-            }
 
             REMOVE_BIT(temp_bb, source_sq);
         }
     }
+            // Handle en passant captures
+            handle_en_passant(MoveList);
 }
 
 /* 
@@ -1001,7 +1001,7 @@ void printMove(int move){
     printf("%s%s%c\n",
     CTSM[GET_SOURCE_SQUARE(move)], 
     CTSM[GET_TARGET_SQUARE(move)], 
-    GET_PROMOTED_PIECE(move));
+    promoted_pieces[GET_PROMOTED_PIECE(move)]);
 }
 
 /*For debugging*/
@@ -1027,17 +1027,16 @@ void printMoveList(Move *MoveList){
 
 // castling rights update constants
 const int castling_rights[64] = {
-     7, 15, 15, 15,  3, 15, 15, 11,
+    14, 15, 15, 15,  12, 15, 15, 13,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
     15, 15, 15, 15, 15, 15, 15, 15,
-    13, 15, 15, 15, 12, 15, 15, 14
+    11, 15, 15, 15, 3, 15, 15, 7
 };
-
-inline int make_move(int move){
+int make_move(int move){
 
     /*Decode the move*/
     int source_sq = GET_SOURCE_SQUARE(move);
@@ -1050,7 +1049,7 @@ inline int make_move(int move){
     int castling = GET_CASTLE_FLAG(move);
 
     /*Copy the game state*/
-    memcpy(&game_copy, &game, sizeof(Game));
+    COPY_GAME();
 
     /*Move the piece*/
     REMOVE_BIT(game.bitboards[piece], source_sq);
@@ -1082,7 +1081,6 @@ inline int make_move(int move){
 
     /*Handle the enpassant*/
     if(enpassant){
-        printf("Target square: %d\n", target_sq);
         /*remove the captured pawn depending on side*/
         if (game.side == WHITE_P) {
             REMOVE_BIT(game.bitboards[bP], target_sq + 8);
@@ -1097,7 +1095,7 @@ inline int make_move(int move){
     }
 
     /*Handle castling*/
-    if(enpassant){
+    if(castling){
         switch (target_sq)
         {
         /*White castles king side*/
@@ -1135,4 +1133,170 @@ inline int make_move(int move){
     }
     /*Updating castling rights*/
     game.castle &= castling_rights[source_sq];
+    game.castle &= castling_rights[target_sq];
+
+    /*Switch the side*/
+    game.side ^= 1;
+
+    /*Increment the half moves*/
+    if(capture || piece == wP || piece == bP){
+        game.half_moves = 0;
+    }else{
+        game.half_moves++;
+    }
+
+    /*Increment the full moves*/
+    if(game.side == BLACK_P){
+        game.full_moves++;
+    }
+
+    /*Update the occupancy bitboards*/
+    game.bitboards[wA] = game.bitboards[wP] | game.bitboards[wN] | game.bitboards[wB] | game.bitboards[wR] | game.bitboards[wQ] | game.bitboards[wK];
+    game.bitboards[bA] = game.bitboards[bP] | game.bitboards[bN] | game.bitboards[bB] | game.bitboards[bR] | game.bitboards[bQ] | game.bitboards[bK];
+    game.bitboards[AP] = game.bitboards[wA] | game.bitboards[bA];
+
+    /*Check for legality of the move*/
+    if(is_square_attacked(get_first_1bit(game.bitboards[wK+((game.side^1)*6)]), game.side, game.bitboards)){
+        /*Restore the game state if it is not legal*/
+        RESTORE_GAME();
+        /*return illegal move*/
+        return 0;
+    }
+
+    /*return legal move*/
+    return 1;
+}
+
+/*================================================*/
+/*                                                */
+/*                 Time and perft                 */
+/*                                                */
+/*================================================*/
+
+int get_time_ms()
+{
+    #ifdef WIN64
+        return GetTickCount();
+    #else
+        struct timeval time_value;
+        gettimeofday(&time_value, NULL);
+        return time_value.tv_sec * 1000 + time_value.tv_usec / 1000;
+    #endif
+}
+
+// leaf nodes (number of positions reached during the test of the move generator at a given depth)
+long nodes;
+
+void perft_driver(int depth)
+{
+
+    // reccursion escape condition
+    if (depth == 0)
+    {
+        // increment nodes count (count reached positions)
+        nodes++;
+        return;
+    }
+    
+    // ccreate move list instance
+    Move MoveList[1] = { {{0}, 0} };
+
+    // generate moves
+    GenerateMoves(MoveList);
+    
+    // loop over generated moves
+    for (int move_count = 0; move_count < MoveList->moveCount; move_count++)
+    {   
+        // preserve board state
+        COPY_GAME();
+
+        // make move
+        if (!make_move(MoveList->moves[move_count])){
+            // skip to the next move
+            continue;
+        }
+        printMove(MoveList->moves[move_count]);
+        //print_board();
+
+        // call perft driver recursively
+        perft_driver(depth - 1);
+        
+        // take back
+        RESTORE_GAME();
+        //print_board();
+
+    }
+}
+
+void legal_moves(Move *MoveList){
+    GenerateMoves(MoveList);
+    int move_count = 0;
+    for(; move_count < MoveList->moveCount; move_count++){
+        COPY_GAME();
+        if(make_move(MoveList->moves[move_count])){
+            printMove(MoveList->moves[move_count]);
+            RESTORE_GAME();
+        }
+    }
+}
+
+char *unicode_pieces[12] = {"♙", "♘", "♗", "♖", "♕", "♔", "♟︎", "♞", "♝", "♜", "♛", "♚"};
+char ascii_pieces[12] = "PNBRQKpnbrqk";
+
+void print_board()
+{
+    // print offset
+    printf("\n");
+
+    // loop over board ranks
+    for (int rank = 0; rank < 8; rank++)
+    {
+        // loop ober board files
+        for (int file = 0; file < 8; file++)
+        {
+            // init square
+            int square = rank * 8 + file;
+            
+            // print ranks
+            if (!file)
+                printf("  %d ", 8 - rank);
+            
+            // define piece variable
+            int piece = -1;
+            
+            // loop over all piece bitboards
+            for (int bb_piece = wP; bb_piece <= bK; bb_piece++)
+            {
+                // if there is a piece on current square
+                if (GET_BIT(game.bitboards[bb_piece], square))
+                    // get piece code
+                    piece = bb_piece;
+            }
+            
+            // print different piece set depending on OS
+            #ifdef WIN64
+                printf(" %c", (piece == -1) ? '.' : ascii_pieces[piece]);
+            #else
+                printf(" %c", (piece == -1) ? '.' : ascii_pieces[piece]);
+            #endif
+        }
+        
+        // print new line every rank
+        printf("\n");
+    }
+    
+    // print board files
+    printf("\n     a b c d e f g h\n\n");
+    
+    // print side to move
+    printf("     Side:     %s\n", !game.side ? "white" : "black");
+    
+    // print enpassant square
+    printf("     Enpassant:   %s\n", (game.enpassant != NO_SQ) ? CTSM[game.enpassant] : "no");
+    
+    // print castling rights
+    printf("     Castling:  %c%c%c%c\n\n", (game.castle & WKC) ? 'K' : '-',
+                                           (game.castle & WQC) ? 'Q' : '-',
+                                           (game.castle & BKC) ? 'k' : '-',
+                                           (game.castle & BQC) ? 'q' : '-');
 }

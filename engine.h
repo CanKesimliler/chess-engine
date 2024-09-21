@@ -193,8 +193,8 @@ U64 knight_attacks(int square);
 U64 king_attacks(int square);
 static inline U64 mask_rook_attacks(int square);
 static inline U64 mask_bishop_attacks(int square);
-static inline U64 generate_rook_attacks(int square, U64 blockBB);
-static inline U64 generate_bishop_attacks(int square, U64 blockBB);
+extern inline U64 generate_rook_attacks(int square, U64 blockBB);
+extern inline U64 generate_bishop_attacks(int square, U64 blockBB);
 void print_bitboard(U64 bitboard);
 void init_pieces_attacks();
 static U64 generate_magic_number();
@@ -206,7 +206,7 @@ void init_slider_attacks();
 int is_occupied(U64 bitboard, int square);
 static U64 find_magic_number(int square, int relevant_bits, int piece);
 void restart_game();
-static inline int is_square_attacked(int square, int side, U64 bitboards[]); // change to static after debugging
+extern inline int is_square_attacked(int square, int side, U64 bitboards[]); // change to static after debugging
 U64 squares_attacked(int side, U64 bitboards[]); // static inline after debugging
 static inline void handle_castling(Move *MoveList);
 static inline void handle_en_passant(Move *MoveList);
@@ -222,11 +222,16 @@ void perft_driver(int depth); // change to static after debugging
 int get_time_ms();
 void legal_moves(Move *MoveList);
 void print_board();
+int parse_move(char *move_string);
+void parse_position(char *position_string);
+void parse_go(char *command);
+void uci_loop();
 
 extern Game game;
 
 extern const char* CTSM[64];
 extern long nodes;
+extern U64 lookup_table[87988];
 
 
 

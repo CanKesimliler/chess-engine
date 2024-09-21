@@ -6,17 +6,19 @@
 
 int main(void){
     restart_game();
-    parse_fen_engine(&game, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
+    //parse_fen_engine(&game, "3k4/7P/8/8/8/8/8/3K4 w - - 0 1");
     // 65535d
     //18446462598732840960d
     init_pieces_attacks();
     init_slider_attacks();
+    
+    //uci_loop();
 
     /*get initial time*/
-    int start = get_time_ms();
+    //int start = get_time_ms();
 
     //perft
-    perft_driver(5);
+    //perft_driver(5);
     //print_bitboard(22518006777118720);
     //print_board();
     //Move moves = {{0}, 0};
@@ -32,7 +34,7 @@ int main(void){
     //printf("attacked: %d",is_square_attacked(E1, BLACK_P, game.bitboards));
 
 
-    printf("Time taken: %d ms\n", get_time_ms() - start);
-    printf("Nodes: %ld\n", nodes);
+    //printf("Time taken: %d ms\n", get_time_ms() - start);
+    //printf("Nodes: %ld\n", nodes);
     return 0;
 }

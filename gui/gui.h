@@ -17,14 +17,13 @@ extern Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
 
 struct Piece
 {
-    Vector2 position;
     int color;
     int type;
     Texture2D* texture;
     
 }typedef Piece;
 
-Piece* CreatePiece(Vector2 position, int color, int type, Texture2D *texture);
+Piece* CreatePiece(int color, int type, Texture2D *texture);
 
 struct Square{
     bool active;
@@ -51,8 +50,11 @@ void InitBoard(Board *board);
 void RestartBoard(Board *board);
 void DrawBoard(Board *board);
 void DrawPieces(Board *board);
+void DrawAttacks(Board *board);
 void InitPieces(Board *board);
 void ActivateSquare(Board *board, Vector2 *coordinates);
+U64 GetAttacks(Board *board);
+void MakeMove(Board *board, int target_square);
 
 #endif
 

@@ -1,6 +1,9 @@
 // system headers
 #include "engine.h"
 #include <string.h>
+#include "parser.h"
+#include <stdlib.h>
+
 #ifdef WIN64
     #include <windows.h>
 #else
@@ -403,7 +406,7 @@ void init_pieces_attacks()
 }
 
 /*Generate bishop attack maps*/
-static inline U64 generate_bishop_attacks(int square, U64 blockBB)
+inline U64 generate_bishop_attacks(int square, U64 blockBB)
 {
 
     /*Result attack bitboard*/
@@ -455,7 +458,7 @@ static inline U64 generate_bishop_attacks(int square, U64 blockBB)
 }
 
 /*Generate rook attack maps*/
-static inline U64 generate_rook_attacks(int square, U64 blockBB)
+inline U64 generate_rook_attacks(int square, U64 blockBB)
 {
 
     /* Result attack bitboard */
@@ -762,7 +765,7 @@ void restart_game(){
 /*                                                */
 /*================================================*/
 
- static inline int is_square_attacked(int square, int side, U64 bitboards[]){
+inline int is_square_attacked(int square, int side, U64 bitboards[]){
     /*Keeping track of the state*/
     U64 is_attacked = 0;
 
@@ -1305,4 +1308,197 @@ void print_board()
                                            (game.castle & WQC) ? 'Q' : '-',
                                            (game.castle & BKC) ? 'k' : '-',
                                            (game.castle & BQC) ? 'q' : '-');
+}
+
+/*================================================*/
+/*                      UCI                       */
+/*================================================*/
+
+int parse_move(char *move_string){
+
+    Move move_list = {{0}, 0};
+    //generate moves
+    generate_moves(&move_list);
+    
+    //parse source square
+    int source_sq = move_string[0] - 'a' + (8 - (move_string[1] - '0')) * 8;
+
+    //parse target square
+    int target_sq = move_string[2] - 'a' + (8 - (move_string[3] - '0')) * 8;
+
+    for(int i = 0; i < move_list.moveCount; i++){
+        int move = move_list.moves[i];
+        if(GET_SOURCE_SQUARE(move) == source_sq && GET_TARGET_SQUARE(move) == target_sq){
+            
+            int promoted_piece = GET_PROMOTED_PIECE(move);
+
+            if(promoted_piece){
+                
+                if((promoted_piece == wQ || promoted_piece == bQ) && move_string[4] == 'q'){
+                    return move;
+                }
+
+                else if((promoted_piece == wR || promoted_piece == bR) && move_string[4] == 'r'){
+                    return move;
+                }
+
+                else if((promoted_piece == wN || promoted_piece == bN) && move_string[4] == 'n'){
+                    return move;
+                }
+
+                else if((promoted_piece == wB || promoted_piece == bB) && move_string[4] == 'b'){
+                    return move;
+                }
+
+                continue;;
+
+            }
+            
+            //return legal moves
+            return move;
+        }
+    }
+    //return illegal moves
+    return 0;
+}
+
+/*
+command line:
+position startpos
+position startpos moves ** **
+position fen "" 
+position fen "" moves ** **
+*/
+void parse_position(char *position_string){
+    char *current_char = position_string;
+    
+    //shifting pointer to the next token
+    current_char += 9;
+
+
+    //check if the position is the starting position
+    if(strncmp(current_char, "startpos", 8) == 0){
+        restart_game();
+        current_char += 9;
+        print_board();
+    }
+    //check if the position is a fen string
+    else{
+        //check if fen is provided
+        current_char = strstr(position_string, "fen");
+        if(current_char != NULL){
+            current_char += 4;
+            parse_fen_engine(&game, current_char);
+            print_board();
+        }
+    }
+    //check if moves are provided
+    current_char = strstr(position_string, "moves");
+    if(current_char == NULL){
+        return;
+    }
+    current_char += 6;
+    while(*current_char){
+        //parse next move
+        int move = parse_move(current_char);
+
+        //if no more moves
+        if(move == 0){
+            break;
+        }
+        //make the move
+        make_move(move);
+
+        //shift the pointer to the next move
+        while(*current_char && *current_char != ' '){
+            current_char++;
+        }
+        current_char++;
+    }
+    print_board();
+}
+
+//go command
+void parse_go(char *command){
+    int depth = -1;
+    char *current_depth = NULL;
+
+    if((current_depth = strstr(command, "depth")) != NULL){
+        depth = atoi(current_depth + 6);
+    }
+    else{
+        depth = 6;
+    }
+
+    //search_position(depth);
+    printf("depth: %d\n", depth);
+}
+
+//main UCI loop
+void uci_loop(){
+    setbuf(stdin, NULL);
+    setbuf(stdout, NULL);
+    
+    printf("id name %s\n", "Mark1");
+    printf("id author %s\n", "CK");
+    printf("uciok\n");
+
+    char input[256];
+
+    //main loop
+    while(1){
+        //reset input
+        memset(input, 0, sizeof(input));
+        
+        fflush(stdout);
+
+        //get input
+        if(!fgets(input, 256, stdin)){
+            continue;
+        }
+
+        //check if the input exists
+        else if(input[0] == '\n'){
+            continue;
+        }
+
+        //parse UCI isready command
+        else if(strncmp(input, "isready", 7) == 0){
+            printf("readyok\n");
+            continue;
+        }
+
+        //parse UCI position command
+        else if(strncmp(input, "position", 8) == 0){
+            parse_position(input);
+            continue;
+        }
+
+        //parse UCI ucinewgame command
+        else if(strncmp(input, "ucinewgame", 10) == 0){
+            restart_game();
+            print_board();
+            continue;
+        } 
+
+        //parse UCI go command
+        else if(strncmp(input, "go", 2) == 0){
+            parse_go(input);
+            continue;
+        }
+
+        //parse UCI uci command
+        else if(strncmp(input, "uci", 3) == 0){
+            printf("id name %s\n", "Mark1");
+            printf("id author %s\n", "CK");
+            printf("uciok\n");
+            continue;
+        }
+        
+        //parse UCI quit command
+        else if(strncmp(input, "quit", 4) == 0){
+            break;
+        }
+
+    }
 }

@@ -15,6 +15,7 @@ extern Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
           black_queen_texture, white_king_texture, black_king_texture;
 
 
+
 struct Piece
 {
     int color;
@@ -33,6 +34,7 @@ struct Square{
 struct Board{
     Square squares[64];
     Piece* pieces[64];
+    Sound* sound_effects[8];
     U64 bitboards[15];
     int side; /*Side to move*/
     int enpassant; /*Enpassant square*/
@@ -45,6 +47,17 @@ struct Board{
     int full_moves; /*Full moves counter*/
     int piece_selected; 
 }typedef Board;
+
+enum{
+    MOVE_SOUND,
+    CAPTURE_SOUND,
+    CHECK_SOUND,
+    CHECKMATE_SOUND,
+    ILLEGAL_SOUND,
+    PROMOTION_SOUND,
+    CASTLE_SOUND,
+    TIME_SOUND  
+};
 
 void InitBoard(Board *board);
 void RestartBoard(Board *board);

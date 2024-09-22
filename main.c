@@ -11,7 +11,6 @@ int main(void){
     //18446462598732840960d
     init_pieces_attacks();
     init_slider_attacks();
-    
     //uci_loop();
 
     /*get initial time*/

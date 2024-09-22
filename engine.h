@@ -231,6 +231,7 @@ extern Game game;
 
 extern const char* CTSM[64];
 extern long nodes;
+const int castling_rights[64];
 extern U64 lookup_table[87988];
 
 

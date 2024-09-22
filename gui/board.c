@@ -287,9 +287,55 @@ U64 GetAttacks(Board *board){
         break;
     case wK:
         attacks |= king_attack_table[square] & ~board->bitboards[wA];
+        //White castles king side
+        if(board->castle & 0b1000){
+            //TODO: INSTEAD OF CHECKING SQUARES ONE BY ON CHECK THEM ALL AT ONCE USING BITMAP
+            bool can_castle = !(GET_BIT(board->bitboards[AP], F1)) &&
+                              !(GET_BIT(board->bitboards[AP], G1)) && 
+                              !is_square_attacked(E1, BLACK_P, board->bitboards) &&
+                              !is_square_attacked(F1, BLACK_P, board->bitboards) &&
+                              !is_square_attacked(G1, BLACK_P, board->bitboards);
+            if(can_castle){
+                SET_BIT(attacks, G1);
+            }
+        }
+        //White castles queen side
+        if(board->castle & 0b0100){
+            bool can_castle = !(GET_BIT(board->bitboards[AP], D1)) && 
+                              !(GET_BIT(board->bitboards[AP], C1)) && 
+                              !(GET_BIT(board->bitboards[AP], B1)) &&
+                              !is_square_attacked(E1, BLACK_P, board->bitboards) &&
+                              !is_square_attacked(D1, BLACK_P, board->bitboards) &&
+                              !is_square_attacked(C1, BLACK_P, board->bitboards);
+            if(can_castle){
+                SET_BIT(attacks, C1);
+            }
+        }
         break;
     case bK:
         attacks |= king_attack_table[square] & ~board->bitboards[bA];
+        //Black castles king side
+        if(board->castle & 0b0010){
+            bool can_castle = !(GET_BIT(board->bitboards[AP], F8)) &&
+                              !(GET_BIT(board->bitboards[AP], G8)) && 
+                              !is_square_attacked(E8, WHITE_P, board->bitboards) &&
+                              !is_square_attacked(F8, WHITE_P, board->bitboards) &&
+                              !is_square_attacked(G8, WHITE_P, board->bitboards);
+            if(can_castle){
+                SET_BIT(attacks, G8);
+            }
+        }
+        if(board->castle & 0b0001){
+            bool can_castle = !(GET_BIT(board->bitboards[AP], D8)) && 
+                              !(GET_BIT(board->bitboards[AP], C8)) && 
+                              !(GET_BIT(board->bitboards[AP], B8)) &&
+                              !is_square_attacked(E8, WHITE_P, board->bitboards) &&
+                              !is_square_attacked(D8, WHITE_P, board->bitboards) &&
+                              !is_square_attacked(C8, WHITE_P, board->bitboards);
+            if(can_castle){
+                SET_BIT(attacks, C8);
+            }
+        }
         break;
     default:
         break;
@@ -357,7 +403,7 @@ void ActivateSquare(Board *board, Vector2 *coordinates){
 
         MakeMove(board, square);
         if(is_square_attacked(get_first_1bit(board->bitboards[wK+((1 ^ board->side)*6)]), board->side, board->bitboards)){
-            puts("Illegal move");
+            PlaySound(*board->sound_effects[ILLEGAL_SOUND]);
             memcpy(board, &board_copy, sizeof(Board));
             return;
         }
@@ -416,19 +462,59 @@ void MakeMove(Board *board, int target_square){
            A2 <= board->piece_selected && 
            board->piece_selected <= H2 &&
            target_square == board->piece_selected - 16){
-            board->enpassant = target_square + 8;
+           board->enpassant = target_square + 8;
         }
         else if(board->pieces[board->piece_selected]->type == bP &&
                 A7 <= board->piece_selected &&
                 board->piece_selected <= H7 &&
                 target_square == board->piece_selected + 16){
-            board->enpassant = target_square - 8;
+                board->enpassant = target_square - 8;
         }
         else{
             board->enpassant = NO_SQ;
         }
-        puts("Move made");
-        printf("Enpassant square: %d\n", board->enpassant);
+        
+        //If the move is a castle
+        if(board->pieces[board->piece_selected]->type == wK){
+            if(target_square == G1){
+                SET_BIT(board->bitboards[wR], F1);
+                SET_BIT(board->bitboards[wA], F1);
+                REMOVE_BIT(board->bitboards[wR], H1);
+                REMOVE_BIT(board->bitboards[wA], H1);
+                board->pieces[F1] = board->pieces[H1];
+                board->pieces[H1] = NULL;
+            }
+            else if(target_square == C1){
+                SET_BIT(board->bitboards[wR], D1);
+                SET_BIT(board->bitboards[wA], D1);
+                REMOVE_BIT(board->bitboards[wR], A1);
+                REMOVE_BIT(board->bitboards[wA], A1);
+                board->pieces[D1] = board->pieces[A1];
+                board->pieces[A1] = NULL;
+            }
+        }
+        else if(board->pieces[board->piece_selected]->type == bK){
+            if(target_square == G8){
+                SET_BIT(board->bitboards[bR], F8);
+                SET_BIT(board->bitboards[bA], F8);
+                REMOVE_BIT(board->bitboards[bR], H8);
+                REMOVE_BIT(board->bitboards[bA], H8);
+                board->pieces[F8] = board->pieces[H8];
+                board->pieces[H8] = NULL;
+            }
+            else if(target_square == C8){
+                SET_BIT(board->bitboards[bR], D8);
+                SET_BIT(board->bitboards[bA], D8);
+                REMOVE_BIT(board->bitboards[bR], A8);
+                REMOVE_BIT(board->bitboards[bA], A8);
+                board->pieces[D8] = board->pieces[A8];
+                board->pieces[A8] = NULL;
+            }
+        }
+        //Updating the castling rights
+        board->castle &= castling_rights[target_square];
+        board->castle &= castling_rights[board->piece_selected];
+
 
         //Updating the bitboards
         board->bitboards[board->pieces[board->piece_selected]->type] ^= (1ULL << board->piece_selected);

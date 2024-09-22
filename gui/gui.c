@@ -73,6 +73,45 @@ int main() {
         return -1; // Exit if any texture was not loaded
     }
 
+    //Initialize the audio
+    InitAudioDevice();
+
+    //Load the audio
+    Sound move_sound = LoadSound("sounds/move-self.mp3");
+    Sound capture_sound = LoadSound("sounds/capture.mp3");
+    Sound check_sound = LoadSound("sounds/move-check.mp3");
+    Sound checkmate_sound = LoadSound("sounds/game-end.mp3");
+    Sound illegal_sound = LoadSound("sounds/illegal.mp3");
+    Sound promotion_sound = LoadSound("sounds/promote.mp3");
+    Sound castle_sound = LoadSound("sounds/castle.mp3");
+    Sound time_sound = LoadSound("sounds/time.mp3");
+
+    //Check if the audio loaded
+    if(move_sound.stream.buffer == NULL || capture_sound.stream.buffer == NULL || check_sound.stream.buffer == NULL || checkmate_sound.stream.buffer == NULL || illegal_sound.stream.buffer == NULL || promotion_sound.stream.buffer == NULL || castle_sound.stream.buffer == NULL || time_sound.stream.buffer == NULL){
+        if(move_sound.stream.buffer == NULL) printf("Failed to load move_sound\n");
+        if(capture_sound.stream.buffer == NULL) printf("Failed to load capture_sound\n");
+        if(check_sound.stream.buffer == NULL) printf("Failed to load check_sound\n");
+        if(checkmate_sound.stream.buffer == NULL) printf("Failed to load checkmate_sound\n");
+        if(illegal_sound.stream.buffer == NULL) printf("Failed to load illegal_sound\n");
+        if(promotion_sound.stream.buffer == NULL) printf("Failed to load promotion_sound\n");
+        if(castle_sound.stream.buffer == NULL) printf("Failed to load castle_sound\n");
+        if(time_sound.stream.buffer == NULL) printf("Failed to load time_sound\n");
+
+        CloseAudioDevice();
+        CloseWindow();
+        return -1;
+    }
+
+    //Assign the sounds to the board
+    board.sound_effects[MOVE_SOUND] = &move_sound;
+    board.sound_effects[CAPTURE_SOUND] = &capture_sound;
+    board.sound_effects[CHECK_SOUND] = &check_sound;
+    board.sound_effects[CHECKMATE_SOUND] = &checkmate_sound;
+    board.sound_effects[ILLEGAL_SOUND] = &illegal_sound;
+    board.sound_effects[PROMOTION_SOUND] = &promotion_sound;
+    board.sound_effects[CASTLE_SOUND] = &castle_sound;
+    board.sound_effects[TIME_SOUND] = &time_sound;
+
     /*Now that the textures are loaded we intialize the board*/
     InitBoard(&board);
     //parse_fen_gui(&board, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - moves e2e4");

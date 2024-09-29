@@ -5,18 +5,15 @@
 #include "gui.h"
 #include "../engine.h"
 #include "../parser.h"
- 
+
 /*Texture Definitions*/
 Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
-          white_rook_texture, white_bishop_texture, black_bishop_texture,
-          white_knight_texture, black_knight_texture, white_queen_texture,
-          black_queen_texture, white_king_texture, black_king_texture;
+    white_rook_texture, white_bishop_texture, black_bishop_texture,
+    white_knight_texture, black_knight_texture, white_queen_texture,
+    black_queen_texture, white_king_texture, black_king_texture;
 
-
-int main() {
-    
-    char choice;
-
+int main()
+{
 
     const int window_width = 800;
     const int window_height = 800;
@@ -24,7 +21,6 @@ int main() {
     /*Declaring the chess board*/
     Board board;
 
-    
     // Initialize the window
     InitWindow(window_width, window_height, "Chess Engine");
 
@@ -48,35 +44,42 @@ int main() {
     black_king_texture = LoadTexture("textures/black_king.png");
 
     // Check if any of the textures failed to load
-    if (white_pawn_texture.id == 0 || black_pawn_texture.id == 0
-        || black_rook_texture.id == 0 || white_rook_texture.id == 0
-        || white_bishop_texture.id == 0 || black_bishop_texture.id == 0
-        || white_knight_texture.id == 0 || black_knight_texture.id == 0 
-        || white_queen_texture.id == 0 || black_queen_texture.id == 0 
-        || white_king_texture.id == 0 || black_king_texture.id == 0) 
-        {
+    if (white_pawn_texture.id == 0 || black_pawn_texture.id == 0 || black_rook_texture.id == 0 || white_rook_texture.id == 0 || white_bishop_texture.id == 0 || black_bishop_texture.id == 0 || white_knight_texture.id == 0 || black_knight_texture.id == 0 || white_queen_texture.id == 0 || black_queen_texture.id == 0 || white_king_texture.id == 0 || black_king_texture.id == 0)
+    {
         // Log which texture failed to load
-        if (white_pawn_texture.id == 0) printf("Failed to load white_pawn_texture\n");
-        if (black_pawn_texture.id == 0) printf("Failed to load black_pawn_texture\n");
-        if (black_rook_texture.id == 0) printf("Failed to load black_rook_texture\n");
-        if (white_rook_texture.id == 0) printf("Failed to load white_rook_texture\n");
-        if (white_bishop_texture.id == 0) printf("Failed to load white_bishop_texture\n");
-        if (black_bishop_texture.id == 0) printf("Failed to load black_bishop_texture\n");
-        if (white_knight_texture.id == 0) printf("Failed to load white_knight_texture\n");
-        if (black_knight_texture.id == 0) printf("Failed to load black_knight_texture\n");
-        if (white_queen_texture.id == 0) printf("Failed to load white_queen_texture\n");
-        if (black_queen_texture.id == 0) printf("Failed to load black_queen_texture\n");
-        if (white_king_texture.id == 0) printf("Failed to load white_king_texture\n");
-        if (black_king_texture.id == 0) printf("Failed to load black_king_texture\n");
+        if (white_pawn_texture.id == 0)
+            printf("Failed to load white_pawn_texture\n");
+        if (black_pawn_texture.id == 0)
+            printf("Failed to load black_pawn_texture\n");
+        if (black_rook_texture.id == 0)
+            printf("Failed to load black_rook_texture\n");
+        if (white_rook_texture.id == 0)
+            printf("Failed to load white_rook_texture\n");
+        if (white_bishop_texture.id == 0)
+            printf("Failed to load white_bishop_texture\n");
+        if (black_bishop_texture.id == 0)
+            printf("Failed to load black_bishop_texture\n");
+        if (white_knight_texture.id == 0)
+            printf("Failed to load white_knight_texture\n");
+        if (black_knight_texture.id == 0)
+            printf("Failed to load black_knight_texture\n");
+        if (white_queen_texture.id == 0)
+            printf("Failed to load white_queen_texture\n");
+        if (black_queen_texture.id == 0)
+            printf("Failed to load black_queen_texture\n");
+        if (white_king_texture.id == 0)
+            printf("Failed to load white_king_texture\n");
+        if (black_king_texture.id == 0)
+            printf("Failed to load black_king_texture\n");
 
         CloseWindow();
         return -1; // Exit if any texture was not loaded
     }
 
-    //Initialize the audio
+    // Initialize the audio
     InitAudioDevice();
 
-    //Load the audio
+    // Load the audio
     Sound move_sound = LoadSound("sounds/move-self.mp3");
     Sound capture_sound = LoadSound("sounds/capture.mp3");
     Sound check_sound = LoadSound("sounds/move-check.mp3");
@@ -86,23 +89,32 @@ int main() {
     Sound castle_sound = LoadSound("sounds/castle.mp3");
     Sound time_sound = LoadSound("sounds/time.mp3");
 
-    //Check if the audio loaded
-    if(move_sound.stream.buffer == NULL || capture_sound.stream.buffer == NULL || check_sound.stream.buffer == NULL || checkmate_sound.stream.buffer == NULL || illegal_sound.stream.buffer == NULL || promotion_sound.stream.buffer == NULL || castle_sound.stream.buffer == NULL || time_sound.stream.buffer == NULL){
-        if(move_sound.stream.buffer == NULL) printf("Failed to load move_sound\n");
-        if(capture_sound.stream.buffer == NULL) printf("Failed to load capture_sound\n");
-        if(check_sound.stream.buffer == NULL) printf("Failed to load check_sound\n");
-        if(checkmate_sound.stream.buffer == NULL) printf("Failed to load checkmate_sound\n");
-        if(illegal_sound.stream.buffer == NULL) printf("Failed to load illegal_sound\n");
-        if(promotion_sound.stream.buffer == NULL) printf("Failed to load promotion_sound\n");
-        if(castle_sound.stream.buffer == NULL) printf("Failed to load castle_sound\n");
-        if(time_sound.stream.buffer == NULL) printf("Failed to load time_sound\n");
+    // Check if the audio loaded
+    if (move_sound.stream.buffer == NULL || capture_sound.stream.buffer == NULL || check_sound.stream.buffer == NULL || checkmate_sound.stream.buffer == NULL || illegal_sound.stream.buffer == NULL || promotion_sound.stream.buffer == NULL || castle_sound.stream.buffer == NULL || time_sound.stream.buffer == NULL)
+    {
+        if (move_sound.stream.buffer == NULL)
+            printf("Failed to load move_sound\n");
+        if (capture_sound.stream.buffer == NULL)
+            printf("Failed to load capture_sound\n");
+        if (check_sound.stream.buffer == NULL)
+            printf("Failed to load check_sound\n");
+        if (checkmate_sound.stream.buffer == NULL)
+            printf("Failed to load checkmate_sound\n");
+        if (illegal_sound.stream.buffer == NULL)
+            printf("Failed to load illegal_sound\n");
+        if (promotion_sound.stream.buffer == NULL)
+            printf("Failed to load promotion_sound\n");
+        if (castle_sound.stream.buffer == NULL)
+            printf("Failed to load castle_sound\n");
+        if (time_sound.stream.buffer == NULL)
+            printf("Failed to load time_sound\n");
 
         CloseAudioDevice();
         CloseWindow();
         return -1;
     }
 
-    //Assign the sounds to the board
+    // Assign the sounds to the board
     board.sound_effects[MOVE_SOUND] = &move_sound;
     board.sound_effects[CAPTURE_SOUND] = &capture_sound;
     board.sound_effects[CHECK_SOUND] = &check_sound;
@@ -114,14 +126,14 @@ int main() {
 
     /*Now that the textures are loaded we intialize the board*/
     InitBoard(&board);
-    //parse_fen_gui(&board, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - moves e2e4");
-    //2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18
+    parse_fen_gui(&board, "1k6/7P/8/8/8/8/7p/1K6 w - - 0 1");
+    // 2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18
     InitPieces(&board);
     // Set the game to run at 60 frames-per-second
     SetTargetFPS(60);
     // Main game loop
-    while (!WindowShouldClose()) {
-        
+    while (!WindowShouldClose())
+    {
 
         // Start drawing
         BeginDrawing();
@@ -132,30 +144,97 @@ int main() {
         DrawPieces(&board);
 
         // Check if the user clicked on a square
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+        {
             // Get the mouse position
             Vector2 mouse = GetMousePosition();
             // Check if the mouse is within the board
-            if (mouse.x >= 0 && mouse.x < window_width && mouse.y >= 0 && mouse.y < window_height) {
-                // Get the square that was clicked
-                mouse.x = (int)mouse.x / TILESIZE;
-                mouse.y = (int)mouse.y / TILESIZE;
-                // Activate the square
-                ActivateSquare(&board, &mouse);
+            if (!(mouse.x >= 0 && mouse.x < window_width && mouse.y >= 0 && mouse.y < window_height))
+                continue;
+
+            // Get the square that was clicked
+            mouse.x = (int)mouse.x / TILESIZE;
+            mouse.y = (int)mouse.y / TILESIZE;
+
+            // If the Promotion menu is open
+            if (board.promotion_window == true)
+            {   
+                int bias = board.side ? 1 : -1;
+                int origin_y = board.squares[GET_SQUARE(mouse.x, mouse.y)].position.y;
+                // if the clicked square is within the promotion menu
+                if (mouse.y == origin_y)
+                {
+                    MakeMove(&board, board.piece_selected+(bias*8), wQ+(board.side*6));
+                    HandleTextures(&board, board.piece_selected+(bias*8), wQ+((board.side^1)*6));
+                    board.promotion_window = false;
+                    // Promote the pawn to queen
+                }
+                else if (mouse.y == origin_y + bias)
+                {
+                    // Promote the pawn to knight
+                }
+                else if (mouse.y == origin_y + 2 * bias)
+                {
+                    // Promote the pawn to bishop
+                }
+                else if (mouse.y == origin_y + 3 * bias)
+                {
+                    // Promote the pawn to rook
+                }
+                board.promotion_window = false;
+                board.piece_selected = NO_SQ;
+                continue;
+            }
+            //If the promotion window is not open
+            // Activate the square
+            if (ActivateSquare(&board, &mouse) == 1)
+            {
+                HandleTextures(&board, GET_SQUARE(mouse.x, mouse.y), -1);
             }
         }
 
-        if(board.piece_selected != NO_SQ){
+        if (board.piece_selected != NO_SQ)
+        {
             DrawAttacks(&board);
+        }
+
+        if (board.promotion_window)
+        {
+            DrawPromotionMenu(&board, board.side, board.piece_selected);
         }
 
         // End drawing
         EndDrawing();
-
-
     }
 
-    // Unload texture and close the window
+    // Unload texture
+    UnloadTexture(white_pawn_texture);
+    UnloadTexture(black_pawn_texture);
+    UnloadTexture(black_rook_texture);
+    UnloadTexture(white_rook_texture);
+    UnloadTexture(white_bishop_texture);
+    UnloadTexture(black_bishop_texture);
+    UnloadTexture(white_knight_texture);
+    UnloadTexture(black_knight_texture);
+    UnloadTexture(white_queen_texture);
+    UnloadTexture(black_queen_texture);
+    UnloadTexture(white_king_texture);
+    UnloadTexture(black_king_texture);
+
+    // Unload audio
+    UnloadSound(move_sound);
+    UnloadSound(capture_sound);
+    UnloadSound(check_sound);
+    UnloadSound(checkmate_sound);
+    UnloadSound(illegal_sound);
+    UnloadSound(promotion_sound);
+    UnloadSound(castle_sound);
+    UnloadSound(time_sound);
+
+    // Close the audio device
+    CloseAudioDevice();
+
+    // Close the window
     CloseWindow();
 
     return 0;

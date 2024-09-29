@@ -14,8 +14,6 @@ extern Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
           white_knight_texture, black_knight_texture, white_queen_texture,
           black_queen_texture, white_king_texture, black_king_texture;
 
-
-
 struct Piece
 {
     int color;
@@ -46,6 +44,8 @@ struct Board{
     int half_moves; /*Half moves counter for 50 moves rule*/
     int full_moves; /*Full moves counter*/
     int piece_selected; 
+    bool promotion_window;
+    int previous_enpassant;
 }typedef Board;
 
 enum{
@@ -65,9 +65,11 @@ void DrawBoard(Board *board);
 void DrawPieces(Board *board);
 void DrawAttacks(Board *board);
 void InitPieces(Board *board);
-void ActivateSquare(Board *board, Vector2 *coordinates);
+int ActivateSquare(Board *board, Vector2 *coordinates);
+void HandleTextures(Board *board, int square, int promotion);
 U64 GetAttacks(Board *board);
-void MakeMove(Board *board, int target_square);
+void MakeMove(Board *board, int target_square, int promotion);
+void DrawPromotionMenu(Board *board, int side, int promotion_square);
 
 #endif
 

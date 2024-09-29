@@ -13,7 +13,7 @@ It is my first big project in C. I will learn basics of chess computing and poli
 - Implement Promotion  
 - Implement the Protocol for GUI to communicate with the engine  
 - Change the DrawAttack to diffrentiate squares with enemy pieces  
-- Implement the checkmate and ending game  
+- Implement the checkmate and game ending  
 - Make it able to play as black  
 - Enable different window sizes  
 

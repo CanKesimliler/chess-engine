@@ -126,7 +126,7 @@ int main()
 
     /*Now that the textures are loaded we intialize the board*/
     InitBoard(&board);
-    parse_fen_gui(&board, "1k6/7P/8/8/8/8/7p/1K6 w - - 0 1");
+    parse_fen_gui(&board, "6b1/7P/k7/8/8/K7/7p/6R1 w - - 0 1");
     // 2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18
     InitPieces(&board);
     // Set the game to run at 60 frames-per-second
@@ -142,7 +142,7 @@ int main()
         // Draw the board
         DrawBoard(&board);
         DrawPieces(&board);
-
+        
         // Check if the user clicked on a square
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
@@ -155,33 +155,45 @@ int main()
             // Get the square that was clicked
             mouse.x = (int)mouse.x / TILESIZE;
             mouse.y = (int)mouse.y / TILESIZE;
-
             // If the Promotion menu is open
-            if (board.promotion_window == true)
+            if (board.promotion_square != NO_SQ)
             {   
-                int bias = board.side ? 1 : -1;
-                int origin_y = board.squares[GET_SQUARE(mouse.x, mouse.y)].position.y;
+                int bias = board.side ? -1 : 1;
+                int origin_y = board.squares[board.piece_selected].position.y + bias*-1;
+                int origin_x = board.squares[board.promotion_square].position.x;
+                printf("Origin X: %d, Origin Y: %d\n", origin_x, origin_y);
+                printf("Mouse X: %f, Mouse Y: %f\n", mouse.x, mouse.y);
+                printf("Selected: %d\n", board.piece_selected);
                 // if the clicked square is within the promotion menu
-                if (mouse.y == origin_y)
+                if (mouse.y == origin_y && mouse.x == origin_x)
                 {
-                    MakeMove(&board, board.piece_selected+(bias*8), wQ+(board.side*6));
-                    HandleTextures(&board, board.piece_selected+(bias*8), wQ+((board.side^1)*6));
-                    board.promotion_window = false;
                     // Promote the pawn to queen
+                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wQ+(board.side*6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wQ+((board.side^1)*6));
+                    board.promotion_square = NO_SQ;
                 }
-                else if (mouse.y == origin_y + bias)
-                {
-                    // Promote the pawn to knight
-                }
-                else if (mouse.y == origin_y + 2 * bias)
-                {
-                    // Promote the pawn to bishop
-                }
-                else if (mouse.y == origin_y + 3 * bias)
+                else if (mouse.y == origin_y + bias && mouse.x == origin_x)
                 {
                     // Promote the pawn to rook
+                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wR+(board.side*6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wR+((board.side^1)*6));
+                    board.promotion_square = NO_SQ;
                 }
-                board.promotion_window = false;
+                else if (mouse.y == origin_y + 2 * bias && mouse.x == origin_x)
+                {
+                    // Promote the pawn to bishop
+                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wB+(board.side*6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wB+((board.side^1)*6));
+                    board.promotion_square = NO_SQ;
+                }
+                else if (mouse.y == origin_y + 3 * bias && mouse.x == origin_x)
+                {
+                    // Promote the pawn to knight
+                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wN+(board.side*6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wN+((board.side^1)*6));
+                    board.promotion_square = NO_SQ;
+                }
+                board.promotion_square = NO_SQ;
                 board.piece_selected = NO_SQ;
                 continue;
             }
@@ -198,9 +210,9 @@ int main()
             DrawAttacks(&board);
         }
 
-        if (board.promotion_window)
+        if (board.promotion_square != NO_SQ)
         {
-            DrawPromotionMenu(&board, board.side, board.piece_selected);
+            DrawPromotionMenu(&board, board.side);
         }
 
         // End drawing

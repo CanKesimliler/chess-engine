@@ -168,7 +168,7 @@ void RestartBoard(Board *board){
     board->half_moves = 0;
     board->full_moves = 0;
     board->piece_selected = NO_SQ;
-    board->promotion_window = false;
+    board->promotion_square = NO_SQ;
 
     board->bitboards[wP] = 0x00FF000000000000;
     board->bitboards[wN] = 0x4200000000000000;
@@ -349,7 +349,13 @@ void DrawAttacks(Board *board){
     U64 attacks = GetAttacks(board);
     while(attacks){
         int attack_square = get_first_1bit(attacks);
-        DrawCircle(attack_square % FILES * TILESIZE + TILESIZE / 2, attack_square / RANKS * TILESIZE + TILESIZE / 2, 10, GRAY);
+        if(SET_BIT_NUM(0, attack_square) & board->bitboards[bA + board->side]){
+            Vector2 ring_center = {attack_square % FILES * TILESIZE + TILESIZE / 2, attack_square / RANKS * TILESIZE + TILESIZE / 2};
+            DrawRing(ring_center, 43, 47, 0, 360, 1, LIGHTGRAY);
+        }
+        else{
+            DrawCircle(attack_square % FILES * TILESIZE + TILESIZE / 2, attack_square / RANKS * TILESIZE + TILESIZE / 2, 10, LIGHTGRAY);
+        }
         REMOVE_BIT(attacks, attack_square);
     }
 }
@@ -417,7 +423,7 @@ int ActivateSquare(Board *board, Vector2 *coordinates){
         if(white_promotion || black_promotion){
             //Restore the board state
             memcpy(board, &board_copy, sizeof(Board));
-            board->promotion_window = true;
+            board->promotion_square = square;
             return 0;
         }
 
@@ -635,8 +641,8 @@ void HandleTextures(Board *board, int square, int promotion){
         return;
 }
 
-void DrawPromotionMenu(Board *board, int side, int promotion_square){
-    int origin_x = board->squares[promotion_square].position.x;
+void DrawPromotionMenu(Board *board, int side){
+    int origin_x = board->squares[board->promotion_square].position.x;
     int origin_y;
     if(WHITE_P == side){
         origin_y = 0;

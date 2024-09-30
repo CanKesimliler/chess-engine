@@ -44,7 +44,7 @@ struct Board{
     int half_moves; /*Half moves counter for 50 moves rule*/
     int full_moves; /*Full moves counter*/
     int piece_selected; 
-    bool promotion_window;
+    int promotion_square;
     int previous_enpassant;
 }typedef Board;
 
@@ -69,7 +69,7 @@ int ActivateSquare(Board *board, Vector2 *coordinates);
 void HandleTextures(Board *board, int square, int promotion);
 U64 GetAttacks(Board *board);
 void MakeMove(Board *board, int target_square, int promotion);
-void DrawPromotionMenu(Board *board, int side, int promotion_square);
+void DrawPromotionMenu(Board *board, int side);
 
 #endif
 

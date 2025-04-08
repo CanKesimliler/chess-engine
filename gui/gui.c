@@ -5,6 +5,12 @@
 #include "gui.h"
 #include "../engine.h"
 #include "../parser.h"
+#if defined WIN64
+#include <windows.h>
+#else
+#include <unistd.h>
+#include <fcntl.h>
+#endif
 
 /*Texture Definitions*/
 Texture2D white_pawn_texture, black_pawn_texture, black_rook_texture,
@@ -17,6 +23,8 @@ int main()
 
     const int window_width = 800;
     const int window_height = 800;
+
+    int player = WHITE_P;
 
     /*Declaring the chess board*/
     Board board;
@@ -124,9 +132,82 @@ int main()
     board.sound_effects[CASTLE_SOUND] = &castle_sound;
     board.sound_effects[TIME_SOUND] = &time_sound;
 
+/*Get the engine Up and running*/
+#if defined WIN64
+    // Windows-specific code (to be implemented)
+#else
+    int to_engine[2], from_engine[2];
+    pid_t pid;
+
+    if (pipe(to_engine) == -1 || pipe(from_engine) == -1)
+    {
+        perror("pipe failed");
+        return -1;
+    }
+
+    pid = fork();
+
+    if (pid == -1)
+    {
+        perror("fork failed");
+        return -1;
+    }
+    else if (pid == 0)
+    {
+        // Child process
+        // Redirect stdin and stdout
+        dup2(to_engine[0], STDIN_FILENO);
+        dup2(from_engine[1], STDOUT_FILENO);
+
+
+        // Close unused pipe ends
+        close(to_engine[1]);
+        close(from_engine[0]);
+
+        // Execute the engine
+        execl("../main", "main", NULL);
+
+        // If execl fails
+        perror("execl failed");
+        return -1;
+    }
+    else
+    {
+        // Parent process
+        // Close unused pipe ends
+        close(to_engine[0]);
+        close(from_engine[1]);
+    }
+
+    // Send "isready" to the engine
+    const char *cmd = "sasza\n";
+    ssize_t bytes_written = write(to_engine[1], cmd, strlen(cmd));
+    puts("Sent isready to engine");
+    if (bytes_written == -1)
+    {
+        perror("Failed to write to engine");
+        return -1;
+    }
+
+    char buffer[256];
+    ssize_t n;
+
+    // Wait for the response from the child
+    printf("Response from receiver: ");
+    while ((n = read(from_engine[0], buffer, sizeof(buffer) - 1)) > 0)
+    {
+        buffer[n] = '\0';
+        printf("%s", buffer);
+
+        // Break if newline is found
+        if (strchr(buffer, '\n') != NULL)
+            break;
+    }
+#endif
+
     /*Now that the textures are loaded we intialize the board*/
     InitBoard(&board);
-    parse_fen_gui(&board, "6b1/7P/k7/8/8/K7/7p/6R1 w - - 0 1");
+    //parse_fen_gui(&board, "6b1/7P/k7/8/8/K7/7p/6R1 w - - 0 1");
     // 2q1rk1/pp1n1ppp/2pb1n2/3p4/3P4/2NBPN2/PPP2PPP/R2Q1RK1 w - - 0 18
     InitPieces(&board);
     // Set the game to run at 60 frames-per-second
@@ -142,7 +223,7 @@ int main()
         // Draw the board
         DrawBoard(&board);
         DrawPieces(&board);
-        
+
         // Check if the user clicked on a square
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
         {
@@ -157,9 +238,9 @@ int main()
             mouse.y = (int)mouse.y / TILESIZE;
             // If the Promotion menu is open
             if (board.promotion_square != NO_SQ)
-            {   
+            {
                 int bias = board.side ? -1 : 1;
-                int origin_y = board.squares[board.piece_selected].position.y + bias*-1;
+                int origin_y = board.squares[board.piece_selected].position.y + bias * -1;
                 int origin_x = board.squares[board.promotion_square].position.x;
                 printf("Origin X: %d, Origin Y: %d\n", origin_x, origin_y);
                 printf("Mouse X: %f, Mouse Y: %f\n", mouse.x, mouse.y);
@@ -168,37 +249,37 @@ int main()
                 if (mouse.y == origin_y && mouse.x == origin_x)
                 {
                     // Promote the pawn to queen
-                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wQ+(board.side*6));
-                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wQ+((board.side^1)*6));
+                    MakeMove(&board, board.piece_selected, GET_SQUARE(mouse.x, origin_y), wQ + (board.side * 6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wQ + ((board.side ^ 1) * 6));
                     board.promotion_square = NO_SQ;
                 }
                 else if (mouse.y == origin_y + bias && mouse.x == origin_x)
                 {
                     // Promote the pawn to rook
-                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wR+(board.side*6));
-                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wR+((board.side^1)*6));
+                    MakeMove(&board, board.piece_selected ,GET_SQUARE(mouse.x, origin_y), wR + (board.side * 6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wR + ((board.side ^ 1) * 6));
                     board.promotion_square = NO_SQ;
                 }
                 else if (mouse.y == origin_y + 2 * bias && mouse.x == origin_x)
                 {
                     // Promote the pawn to bishop
-                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wB+(board.side*6));
-                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wB+((board.side^1)*6));
+                    MakeMove(&board, board.piece_selected, GET_SQUARE(mouse.x, origin_y), wB + (board.side * 6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wB + ((board.side ^ 1) * 6));
                     board.promotion_square = NO_SQ;
                 }
                 else if (mouse.y == origin_y + 3 * bias && mouse.x == origin_x)
                 {
                     // Promote the pawn to knight
-                    MakeMove(&board, GET_SQUARE(mouse.x, origin_y), wN+(board.side*6));
-                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wN+((board.side^1)*6));
+                    MakeMove(&board, board.piece_selected ,GET_SQUARE(mouse.x, origin_y), wN + (board.side * 6));
+                    HandleTextures(&board, GET_SQUARE(mouse.x, origin_y), wN + ((board.side ^ 1) * 6));
                     board.promotion_square = NO_SQ;
                 }
                 board.promotion_square = NO_SQ;
                 board.piece_selected = NO_SQ;
                 continue;
             }
-            //If the promotion window is not open
-            // Activate the square
+            // If the promotion window is not open
+            //  Activate the square
             if (ActivateSquare(&board, &mouse) == 1)
             {
                 HandleTextures(&board, GET_SQUARE(mouse.x, mouse.y), -1);
@@ -214,6 +295,17 @@ int main()
         {
             DrawPromotionMenu(&board, board.side);
         }
+
+        // Check if the engine is to move
+        if (board.side != player)
+        {
+#if defined WIN64
+            // Windows-specific code (to be implemented)
+#else
+           
+#endif
+        }
+        //*/
 
         // End drawing
         EndDrawing();
@@ -248,6 +340,10 @@ int main()
 
     // Close the window
     CloseWindow();
+    write(to_engine[1], "quit\n", 5);
+    
+    close(to_engine[0]);
+    close(from_engine[1]);
 
     return 0;
 }

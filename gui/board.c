@@ -409,7 +409,7 @@ int ActivateSquare(Board *board, Vector2 *coordinates){
         Board board_copy;
         memcpy(&board_copy, board, sizeof(Board));
 
-        MakeMove(board, square, -1);
+        MakeMove(board, board->piece_selected, square, -1);
         if(is_square_attacked(get_first_1bit(board->bitboards[wK+((1 ^ board->side)*6)]), board->side, board->bitboards)){
             PlaySound(*board->sound_effects[ILLEGAL_SOUND]);
             memcpy(board, &board_copy, sizeof(Board));
@@ -432,7 +432,7 @@ int ActivateSquare(Board *board, Vector2 *coordinates){
     return 0;
 }
 
-void MakeMove(Board *board, int target_square, int promotion){
+void MakeMove(Board *board, int source_square, int target_square, int promotion){
         
     U64 bit_rep = (1ULL << target_square);
         //If the clicked square has an enemy piece
@@ -456,17 +456,17 @@ void MakeMove(Board *board, int target_square, int promotion){
         board->previous_enpassant = board->enpassant;
 
         //If the move is a pawn double push ??
-        if(board->pieces[board->piece_selected]->type == wP &&
-           A2 <= board->piece_selected && 
-           board->piece_selected <= H2 &&
-           target_square == board->piece_selected - 16)
+        if(board->pieces[source_square]->type == wP &&
+           A2 <= source_square && 
+           source_square <= H2 &&
+           target_square == source_square - 16)
         {
            board->enpassant = target_square + 8;
         }
-        else if(board->pieces[board->piece_selected]->type == bP &&
-                A7 <= board->piece_selected &&
-                board->piece_selected <= H7 &&
-                target_square == board->piece_selected + 16)
+        else if(board->pieces[source_square]->type == bP &&
+                A7 <= source_square &&
+                source_square <= H7 &&
+                target_square == source_square + 16)
         {
             board->enpassant = target_square - 8;
         }
@@ -475,28 +475,28 @@ void MakeMove(Board *board, int target_square, int promotion){
         }
         
         //If the move is a castle
-        if(board->pieces[board->piece_selected]->type == wK){
-            if(target_square == G1){
+        if(board->pieces[source_square]->type == wK && board->castle){
+            if(target_square == G1 && board->castle & WKC){
                 SET_BIT(board->bitboards[wR], F1);
                 SET_BIT(board->bitboards[wA], F1);
                 REMOVE_BIT(board->bitboards[wR], H1);
                 REMOVE_BIT(board->bitboards[wA], H1);
             }
-            else if(target_square == C1){
+            else if(target_square == C1 && board->castle & WQC){
                 SET_BIT(board->bitboards[wR], D1);
                 SET_BIT(board->bitboards[wA], D1);
                 REMOVE_BIT(board->bitboards[wR], A1);
                 REMOVE_BIT(board->bitboards[wA], A1);
             }
         }
-        else if(board->pieces[board->piece_selected]->type == bK){
-            if(target_square == G8){
+        else if(board->pieces[source_square]->type == bK){
+            if(target_square == G8 && board->castle & BKC){
                 SET_BIT(board->bitboards[bR], F8);
                 SET_BIT(board->bitboards[bA], F8);
                 REMOVE_BIT(board->bitboards[bR], H8);
                 REMOVE_BIT(board->bitboards[bA], H8);
             }
-            else if(target_square == C8){
+            else if(target_square == C8 && board->castle & BQC){
                 SET_BIT(board->bitboards[bR], D8);
                 SET_BIT(board->bitboards[bA], D8);
                 REMOVE_BIT(board->bitboards[bR], A8);
@@ -506,7 +506,7 @@ void MakeMove(Board *board, int target_square, int promotion){
 
         //Updating the castling rights
         board->castle &= castling_rights[target_square];
-        board->castle &= castling_rights[board->piece_selected];
+        board->castle &= castling_rights[source_square];
 
         //Updating the bitboards
         
@@ -515,11 +515,11 @@ void MakeMove(Board *board, int target_square, int promotion){
             SET_BIT(board->bitboards[promotion], target_square);
         }
         else{
-            SET_BIT(board->bitboards[board->pieces[board->piece_selected]->type], target_square);
+            SET_BIT(board->bitboards[board->pieces[source_square]->type], target_square);
         }
-        REMOVE_BIT(board->bitboards[board->pieces[board->piece_selected]->type], board->piece_selected);
+        REMOVE_BIT(board->bitboards[board->pieces[source_square]->type], source_square);
 
-        board->bitboards[bA + (1^board->side)] ^= (1ULL << board->piece_selected);
+        board->bitboards[bA + (1^board->side)] ^= (1ULL << source_square);
         board->bitboards[bA + (1^board->side)] |= bit_rep; 
 
         board->bitboards[AP] = board->bitboards[wA] | board->bitboards[bA];
@@ -557,12 +557,12 @@ void HandleTextures(Board *board, int square, int promotion){
         }
         //if the move is a castle move
         else if (board->pieces[board->piece_selected]->type == wK){
-            if(square == G1){
+            if(square == G1 && board->bitboards[wR] & SET_BIT_NUM(0, F1)){
                 board->pieces[F1] = board->pieces[H1];
                 board->pieces[H1] = NULL;
                 PlaySound(*board->sound_effects[CASTLE_SOUND]);
             }
-            else if(square == C1){
+            else if(square == C1 && board->bitboards[wR] & SET_BIT_NUM(0, D1)){
                 board->pieces[D1] = board->pieces[A1];
                 board->pieces[A1] = NULL;
                 PlaySound(*board->sound_effects[CASTLE_SOUND]);
@@ -574,12 +574,12 @@ void HandleTextures(Board *board, int square, int promotion){
             else {PlaySound(*board->sound_effects[MOVE_SOUND]);}
         }
         else if(board->pieces[board->piece_selected]->type == bK){
-            if(square == G8){
+            if(square == G8 && board->bitboards[bR] & SET_BIT_NUM(0, F8)){
                 board->pieces[F8] = board->pieces[H8];
                 board->pieces[H8] = NULL;
                 PlaySound(*board->sound_effects[CASTLE_SOUND]);
             }
-            else if(square == C8){
+            else if(square == C8 && board->bitboards[bR] & SET_BIT_NUM(0, D8)){
                 board->pieces[D8] = board->pieces[A8];
                 board->pieces[A8] = NULL;
                 PlaySound(*board->sound_effects[CASTLE_SOUND]);

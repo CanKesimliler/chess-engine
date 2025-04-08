@@ -1429,7 +1429,9 @@ void parse_go(char *command){
     else{
         depth = 6;
     }
-
+    Move MoveList = {{0}, 0};
+    generate_moves(&MoveList);
+    printMoveList(&MoveList);
     //search_position(depth);
     printf("depth: %d\n", depth);
 }
@@ -1453,9 +1455,10 @@ void uci_loop(){
         fflush(stdout);
 
         //get input
-        if(!fgets(input, 256, stdin)){
+        if(scanf(" %[^\n]s", input) == EOF){
             continue;
         }
+        
 
         //check if the input exists
         else if(input[0] == '\n'){
@@ -1499,6 +1502,38 @@ void uci_loop(){
         else if(strncmp(input, "quit", 4) == 0){
             break;
         }
+        printf("input: %s\n", input);
 
     }
 }
+
+
+/**************************************************/
+/*                   Evaluation                   */
+/**************************************************/
+
+int materail_score[12] ={
+    100, /*White pawn*/ 
+    300, /*White knight*/
+    350, /*White bishop*/
+    500, /*White rook*/
+    900, /*White queen*/
+    10000, /*White king*/
+    -100, /*Black pawn*/
+    -300, /*Black knight*/
+    -350, /*Black bishop*/
+    -500, /*Black rook*/
+    -900, /*Black queen*/
+    -10000 /*Black king*/
+};
+
+extern inline int evaluate(){
+    //evaluation score
+    int score = 0;
+    //loop over all pieces
+    for(int piece = wP; piece <= bK; piece++){
+        score += COUNT_BITS(game.bitboards[piece]) * materail_score[piece];
+        }
+
+    return score;
+    }

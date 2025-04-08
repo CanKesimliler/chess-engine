@@ -68,7 +68,7 @@ void InitPieces(Board *board);
 int ActivateSquare(Board *board, Vector2 *coordinates);
 void HandleTextures(Board *board, int square, int promotion);
 U64 GetAttacks(Board *board);
-void MakeMove(Board *board, int target_square, int promotion);
+void MakeMove(Board *board, int source_square, int target_square, int promotion);
 void DrawPromotionMenu(Board *board, int side);
 
 #endif

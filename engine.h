@@ -215,6 +215,7 @@ inline static void handle_pawn_moves(Move *MoveList, int source_sq, int directio
 
 static inline void generate_moves(Move *MoveList); // change to static after debugging
 static inline void add_move(Move *MoveList, int move);  // change to static after debugging
+extern inline int evaluate();
 void printMove(int move);
 void printMoveList(Move *MoveList);
 int make_move(int move); // change to static after debugging

@@ -12,6 +12,7 @@ int main(void){
     init_pieces_attacks();
     init_slider_attacks();
     //uci_loop();
+    //printf("Eval: %d\n", evaluate());
 
     /*get initial time*/
     //int start = get_time_ms();
